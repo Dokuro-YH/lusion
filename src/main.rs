@@ -1,26 +1,38 @@
 #![feature(async_await, await_macro)]
 
+macro_rules! box_async {
+    {$($t:tt)*} => {
+        FutureObj::new(Box::new(async move { $($t)* }))
+    };
+}
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate juniper;
 
-pub mod schema;
-pub mod error;
 pub mod db;
+pub mod error;
 pub mod graphql;
+pub mod middleware;
 pub mod resp;
+pub mod schema;
+pub mod security;
 
-use std::{io, env};
+use std::{env, io};
 
 use http::StatusCode;
-use tide::{App, Context, Response};
-use juniper::http::{GraphQLRequest};
 use juniper::http::graphiql::graphiql_source;
+use juniper::http::GraphQLRequest;
+use tide::{App, Context, Response};
 
-use crate::db::{PgPool};
-use crate::graphql::{Schema, QueryRoot, MutationRoot};
-use crate::error::{ErrorKind, Error, ResultExt};
+use crate::db::PgPool;
+use crate::error::{Error, ErrorKind, ResultExt};
+use crate::graphql::{MutationRoot, QueryRoot, Schema};
+use crate::middleware::{CookieSecurityPolicy, SecurityMiddleware};
+
+static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 
 async fn graphiql(_: Context<PgPool>) -> Response {
     let res = graphiql_source("http://localhost:8000/graphql");
@@ -48,6 +60,15 @@ fn main() -> io::Result<()> {
     let db = PgPool::new(&database_url);
 
     let mut app = App::new(db);
+    app.middleware(SecurityMiddleware::new(
+        CookieSecurityPolicy::new(AUTH_SIGNING_KEY)
+            .path("/")
+            .name("auth-cookie")
+            .domain("localhost")
+            .secure(false)
+            .max_age(3600),
+    ));
+
     app.at("/graphiql").get(graphiql);
     app.at("/graphql").post(graphql);
 

@@ -3,9 +3,9 @@ use std::fmt::{self, Display};
 
 use failure::{Backtrace, Context, Fail};
 use http::StatusCode;
-use http_service::Body;
+use http_service::{Body, Response};
 use juniper::{FieldError, IntoFieldError};
-use tide::response::{IntoResponse, Response};
+use tide::response::IntoResponse;
 
 pub use failure::ResultExt;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
