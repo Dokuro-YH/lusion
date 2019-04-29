@@ -7,6 +7,26 @@ readme = "README.md"
 license = "MIT or Apache-2.0"
 
 [dependencies]
-http = "0.1"
-tide = "0.1"
+bytes = "0.4.12"
+dotenv = "0.13"
+failure = "0.1"
 futures-preview = "=0.3.0-alpha.14"
+http = "0.1"
+http-service = "0.1"
+juniper = "0.10"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+tide = "0.1"
+
+[dependencies.uuid]
+features = ["v4", "serde"]
+version = "0.6"
+
+[dependencies.chrono]
+features = ["serde"]
+version = "0.4"
+
+[dependencies.diesel]
+features = ["r2d2", "uuid", "chrono", "serde_json", "postgres"]
+version = "1.4"
