@@ -1,6 +1,7 @@
 # Lusion
 
 [![Build Status](https://travis-ci.org/Dokuro-YH/lusion-rs.svg?branch=master)](https://travis-ci.org/Dokuro-YH/lusion-rs)
+[![Codecov](https://codecov.io/gh/Dokuro-YH/lusion-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/Dokuro-YH/lusion-rs)
 [![License: MIT/Apache-2.0](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](#license)
 
 An experimental, Web API based on async/await IO implementation.
