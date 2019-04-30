@@ -19,6 +19,9 @@ pub enum ErrorKind {
     #[fail(display = "Failed to get connection")]
     DbPoolError,
 
+    #[fail(display = "Database transaction error")]
+    DbTransaction,
+
     #[fail(display = "Database access error")]
     DbError,
 

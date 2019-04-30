@@ -5,6 +5,13 @@ use http_service::{Body, Request, Response};
 use http_service_mock::{make_server, TestBackend};
 use tide::{App, Server};
 
+use crate::db::PgPool;
+
+pub fn init_pool() -> PgPool {
+    let database_url = dotenv::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    PgPool::new(&database_url)
+}
+
 pub fn init_service<AppData: Send + Sync + 'static>(
     app: App<AppData>,
 ) -> TestBackend<Server<AppData>> {

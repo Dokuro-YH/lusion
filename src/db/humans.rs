@@ -6,7 +6,7 @@ use crate::db::PgConn;
 use crate::error::{ErrorKind, Result, ResultExt};
 use crate::schema::{human_friends, humans};
 
-#[derive(Clone, Queryable)]
+#[derive(Debug, PartialEq, Queryable)]
 pub struct Human {
     pub id: Uuid,
     pub name: String,
@@ -48,25 +48,28 @@ pub trait HumanRepository {
 impl HumanRepository for PgConn {
     fn find_humans(&self) -> Result<Vec<Human>> {
         use crate::schema::humans::dsl::*;
+        let conn = self.get_conn();
 
-        Ok(humans.load(&self.conn).context(ErrorKind::DbError)?)
+        Ok(humans.load(conn).context(ErrorKind::DbError)?)
     }
 
     fn find_human(&self, id: &Uuid) -> Result<Option<Human>> {
+        let conn = self.get_conn();
         Ok(humans::table
             .find(id)
-            .first(&self.conn)
+            .first(conn)
             .optional()
             .context(ErrorKind::DbError)?)
     }
 
     fn create_human(&self, input: CreateHuman) -> Result<Human> {
         use crate::schema::humans::dsl::*;
+        let conn = self.get_conn();
 
         let human_id = Uuid::new_v4();
-        let human: Human = diesel::insert_into(humans)
+        let human = diesel::insert_into(humans)
             .values((id.eq(&human_id), name.eq(&input.name)))
-            .get_result(&self.conn)
+            .get_result::<Human>(conn)
             .context(ErrorKind::DbError)?;
 
         let friends = input
@@ -79,7 +82,7 @@ impl HumanRepository for PgConn {
             .collect::<Vec<HumanFriend>>();
         diesel::insert_into(human_friends::table)
             .values(&friends)
-            .execute(&self.conn)
+            .execute(conn)
             .context(ErrorKind::DbError)?;
 
         Ok(human)
@@ -87,10 +90,11 @@ impl HumanRepository for PgConn {
 
     fn update_human(&self, human_id: &Uuid, input: UpdateHuman) -> Result<Option<Human>> {
         use crate::schema::humans::dsl::*;
+        let conn = self.get_conn();
 
-        let human: Option<Human> = diesel::update(humans.find(human_id))
+        let human = diesel::update(humans.find(human_id))
             .set(name.eq(&input.name))
-            .get_result(&self.conn)
+            .get_result::<Human>(conn)
             .optional()
             .context(ErrorKind::DbError)?;
 
@@ -99,7 +103,7 @@ impl HumanRepository for PgConn {
             Some(human) => {
                 let _ = diesel::delete(human_friends::table)
                     .filter(human_friends::human_id.eq(human_id))
-                    .execute(&self.conn)
+                    .execute(conn)
                     .context(ErrorKind::DbError)?;
                 let friends = input
                     .friend_ids
@@ -111,7 +115,7 @@ impl HumanRepository for PgConn {
                     .collect::<Vec<HumanFriend>>();
                 diesel::insert_into(human_friends::table)
                     .values(&friends)
-                    .execute(&self.conn)
+                    .execute(conn)
                     .context(ErrorKind::DbError)?;
                 Ok(Some(human))
             }
@@ -120,17 +124,18 @@ impl HumanRepository for PgConn {
 
     fn delete_human(&self, human_id: &Uuid) -> Result<usize> {
         use crate::schema::humans::dsl::*;
+        let conn = self.get_conn();
 
         let _ = diesel::delete(human_friends::table)
             .filter(human_friends::friend_id.eq(human_id))
-            .execute(&self.conn)
+            .execute(conn)
             .context(ErrorKind::DbError)?;
         let _ = diesel::delete(human_friends::table)
             .filter(human_friends::human_id.eq(human_id))
-            .execute(&self.conn)
+            .execute(conn)
             .context(ErrorKind::DbError)?;
         let updated = diesel::delete(humans.find(human_id))
-            .execute(&self.conn)
+            .execute(conn)
             .context(ErrorKind::DbError)?;
 
         Ok(updated)
@@ -138,16 +143,122 @@ impl HumanRepository for PgConn {
 
     fn find_friends_by_human_id(&self, human_id: &Uuid) -> Result<Vec<Human>> {
         use diesel::dsl::any;
+        let conn = self.get_conn();
 
         let friend_ids = human_friends::table
             .select(human_friends::friend_id)
             .filter(human_friends::human_id.eq(human_id))
-            .load::<Uuid>(&self.conn)
+            .load::<Uuid>(conn)
             .context(ErrorKind::DbError)?;
 
         Ok(humans::table
             .filter(humans::id.eq(any(friend_ids)))
-            .load(&self.conn)
+            .load(conn)
             .context(ErrorKind::DbError)?)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::*;
+
+    #[test]
+    fn find_human_should_returns_none() {
+        let pool = init_pool();
+
+        let human = pool
+            .test_transaction(|conn| conn.find_human(&Uuid::new_v4()))
+            .unwrap();
+        assert_eq!(None, human);
+    }
+
+    #[test]
+    fn find_humans_should_returns_empty_vec() {
+        let pool = init_pool();
+
+        let humans = pool.test_transaction(|conn| conn.find_humans()).unwrap();
+        assert_eq!(Vec::<Human>::new(), humans);
+    }
+
+    #[test]
+    fn create_human_should_returns_human_name() {
+        let pool = init_pool();
+
+        let human = pool
+            .test_transaction(|conn| {
+                conn.create_human(CreateHuman {
+                    name: "bob".to_owned(),
+                    friend_ids: vec![],
+                })
+            })
+            .unwrap();
+
+        assert_eq!("bob", human.name);
+    }
+
+    #[test]
+    fn create_human_should_add_friends() {
+        let pool = init_pool();
+
+        let friends = pool
+            .test_transaction(|conn| {
+                let bob = conn.create_human(CreateHuman {
+                    name: "bob".to_owned(),
+                    friend_ids: vec![],
+                })?;
+
+                let alice = conn.create_human(CreateHuman {
+                    name: "alice".to_owned(),
+                    friend_ids: vec![bob.id],
+                })?;
+
+                conn.find_friends_by_human_id(&alice.id)
+            })
+            .unwrap();
+
+        assert_eq!("bob", friends[0].name);
+    }
+
+    #[test]
+    fn update_human_should_returns_none() {
+        let pool = init_pool();
+
+        let human = pool
+            .test_transaction(|conn| {
+                conn.update_human(
+                    &Uuid::new_v4(),
+                    UpdateHuman {
+                        name: "no exist".to_owned(),
+                        friend_ids: vec![],
+                    },
+                )
+            })
+            .unwrap();
+
+        assert_eq!(None, human);
+    }
+
+    #[test]
+    fn delete_human_should_be_returns_zero() {
+        let pool = init_pool();
+
+        let updated = pool
+            .test_transaction(|conn| conn.delete_human(&Uuid::new_v4()))
+            .unwrap();
+
+        assert_eq!(0, updated);
+    }
+
+    #[test]
+    fn find_friends_by_human_id_should_returns_empty() {
+        let pool = init_pool();
+
+        let friends = pool
+            .test_transaction(|conn| conn.find_friends_by_human_id(&Uuid::new_v4()))
+            .unwrap();
+
+        assert_eq!(Vec::<Human>::new(), friends);
+    }
+
 }

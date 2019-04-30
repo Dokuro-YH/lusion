@@ -37,9 +37,9 @@ fn main() -> io::Result<()> {
     dotenv::dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db = PgPool::new(&database_url);
+    let pool = PgPool::new(&database_url);
 
-    let mut app = tide::App::new(db);
+    let mut app = tide::App::new(pool);
     app.middleware(SecurityMiddleware::new(
         CookieSecurityPolicy::new(AUTH_SIGNING_KEY)
             .path("/")
