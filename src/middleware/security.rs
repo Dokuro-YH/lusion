@@ -119,14 +119,16 @@ impl SecurityPolicy for CookieSecurityPolicy {
         let mut jar = CookieJar::new();
 
         for hdr in req.headers().get_all(http::header::COOKIE) {
-            let cookie_str = hdr
+            let s = hdr
                 .to_str()
                 .map_err(|e| StringError(format!("Failed to parse header value: {}", e)))?;
 
-            if !cookie_str.is_empty() {
-                let cookie = Cookie::parse(cookie_str.to_owned())
-                    .map_err(|e| StringError(format!("Failed to parse cookie: {}", e)))?;
-                jar.add_original(cookie);
+            for cookie_str in s.split(';').map(str::trim) {
+                if !cookie_str.is_empty() {
+                    let cookie = Cookie::parse_encoded(cookie_str.to_owned())
+                        .map_err(|e| StringError(format!("Failed to parse cookie: {}", e)))?;
+                    jar.add_original(cookie);
+                }
             }
         }
 
@@ -197,7 +199,7 @@ mod tests {
     use crate::resp;
     use crate::security::SecurityExt;
     use futures::executor::block_on;
-    use http::StatusCode;
+    use http::{StatusCode, HeaderMap};
     use http_service::Body;
     use http_service_mock::{make_server, TestBackend};
 
@@ -257,6 +259,12 @@ mod tests {
         res
     }
 
+    fn get_cookie(cookie_name: &str, headers: &HeaderMap) -> Option<Cookie<'static>> {
+        let cookie_header = headers.get(header::SET_COOKIE).unwrap().to_str().unwrap();
+        let auth_cookie = cookie_header.split(';').map(str::trim).find(|s| s.starts_with(cookie_name)).unwrap();
+        Cookie::parse_encoded(auth_cookie.to_owned()).ok()
+    }
+
     #[test]
     fn successfully_retrieve_request_user_info() {
         let mut server = server(app());
@@ -276,10 +284,11 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = res.headers().get(header::SET_COOKIE).unwrap();
+        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
 
+        println!("{}", auth_cookie.encoded().to_string());
         let req = http::Request::get("/get")
-            .header(header::COOKIE, auth_cookie)
+            .header(header::COOKIE, auth_cookie.encoded().to_string())
             .body(Body::empty())
             .unwrap();
         let res = call(&mut server, req);
@@ -297,10 +306,10 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = res.headers().get(header::SET_COOKIE).unwrap();
+        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
 
         let req = http::Request::get("/check")
-            .header(header::COOKIE, auth_cookie)
+            .header(header::COOKIE, auth_cookie.encoded().to_string())
             .body(Body::empty())
             .unwrap();
         let res = call(&mut server, req);
@@ -318,10 +327,10 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = res.headers().get(header::SET_COOKIE).unwrap();
+        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
 
         let req = http::Request::get("/forget")
-            .header(header::COOKIE, auth_cookie)
+            .header(header::COOKIE, auth_cookie.encoded().to_string())
             .body(Body::empty())
             .unwrap();
         let res = call(&mut server, req);
@@ -329,7 +338,7 @@ mod tests {
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
         let req = http::Request::get("/get")
-            .header(header::COOKIE, auth_cookie)
+            .header(header::COOKIE, auth_cookie.encoded().to_string())
             .body(Body::empty())
             .unwrap();
         let res = call(&mut server, req);
@@ -347,7 +356,7 @@ mod tests {
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = res.headers().get(header::SET_COOKIE).unwrap();
-        assert!(auth_cookie.to_str().unwrap().contains("test-cookie123"))
+        let auth_cookie = get_cookie("test-cookie123", res.headers());
+        assert!(auth_cookie.is_some());
     }
 }
