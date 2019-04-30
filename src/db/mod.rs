@@ -1,4 +1,4 @@
-///! Database access module.
+//! Database access module.
 pub mod humans;
 
 use diesel::pg::PgConnection;

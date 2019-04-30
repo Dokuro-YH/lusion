@@ -1,4 +1,4 @@
-///! Semantic HTTP response helpers.
+//! Semantic HTTP response helpers.
 use bytes::Bytes;
 use http::{HttpTryFrom, StatusCode};
 use http_service::Body;

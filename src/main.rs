@@ -1,6 +1,6 @@
 #![feature(async_await, await_macro)]
 
-///! An experimental, Web API based on async/await IO implementation.
+//! An experimental, Web API based on async/await IO implementation.
 
 macro_rules! box_async {
     {$($t:tt)*} => {

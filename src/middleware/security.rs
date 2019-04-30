@@ -1,3 +1,4 @@
+//! Middleware-based security context.
 use cookie::{Cookie, CookieJar, Key};
 use futures::future::FutureObj;
 use http::header::{self, HeaderValue};

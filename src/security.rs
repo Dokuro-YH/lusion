@@ -1,3 +1,4 @@
+//! Security context.
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use std::sync::{Arc, RwLock};
@@ -86,7 +87,7 @@ impl SecurityContextInner {
     }
 }
 
-/// An extension to `Context` that provides security methods.
+/// An extension to `Context` that provides security context.
 pub trait SecurityExt {
     /// Get current principal.
     fn principal(&mut self) -> Result<Option<String>, StringError>;

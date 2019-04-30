@@ -1,4 +1,4 @@
-///! Graphql API module.
+//! Graphql API module.
 mod humans;
 
 use http::StatusCode;

@@ -1,4 +1,4 @@
-///! Human database reposiroty.
+//! Human database access.
 use diesel::prelude::*;
 use uuid::Uuid;
 
@@ -31,7 +31,6 @@ struct HumanFriend<'a> {
     friend_id: &'a Uuid,
 }
 
-/// Human reposiroty
 pub trait HumanRepository {
     fn find_humans(&self) -> Result<Vec<Human>>;
 

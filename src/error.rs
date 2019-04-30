@@ -1,4 +1,4 @@
-///! Errors.
+//! Errors.
 use std::fmt::{self, Display};
 
 use failure::{Backtrace, Context, Fail};
