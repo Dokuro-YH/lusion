@@ -199,7 +199,7 @@ mod tests {
     use crate::resp;
     use crate::security::SecurityExt;
     use futures::executor::block_on;
-    use http::{StatusCode, HeaderMap};
+    use http::{HeaderMap, StatusCode};
     use http_service::Body;
     use http_service_mock::{make_server, TestBackend};
 
@@ -261,7 +261,11 @@ mod tests {
 
     fn get_cookie(cookie_name: &str, headers: &HeaderMap) -> Option<Cookie<'static>> {
         let cookie_header = headers.get(header::SET_COOKIE).unwrap().to_str().unwrap();
-        let auth_cookie = cookie_header.split(';').map(str::trim).find(|s| s.starts_with(cookie_name)).unwrap();
+        let auth_cookie = cookie_header
+            .split(';')
+            .map(str::trim)
+            .find(|s| s.starts_with(cookie_name))
+            .unwrap();
         Cookie::parse_encoded(auth_cookie.to_owned()).ok()
     }
 
