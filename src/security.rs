@@ -50,7 +50,7 @@ impl SecurityContext {
         self.inner.read().unwrap().subject.clone()
     }
 
-    pub fn changed(&self) -> bool {
+    pub fn is_changed(&self) -> bool {
         self.inner.read().unwrap().changed
     }
 }

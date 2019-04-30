@@ -150,7 +150,7 @@ impl SecurityPolicy for CookieSecurityPolicy {
         sc: SecurityContext,
         mut resp: Response,
     ) -> Result<Response, StringError> {
-        if sc.changed() {
+        if sc.is_changed() {
             let mut jar = CookieJar::new();
             let mut cookie = Cookie::named(self.name.clone());
             cookie.set_path(self.path.clone());
