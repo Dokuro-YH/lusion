@@ -198,10 +198,9 @@ mod tests {
     use super::*;
     use crate::resp;
     use crate::security::SecurityExt;
-    use futures::executor::block_on;
-    use http::{HeaderMap, StatusCode};
+    use crate::test_helpers::*;
+    use http::StatusCode;
     use http_service::Body;
-    use http_service_mock::{make_server, TestBackend};
 
     async fn retrieve_user_info(mut ctx: Context<()>) -> Response {
         let res = ctx
@@ -225,7 +224,7 @@ mod tests {
     }
 
     fn named_cookie_app(cookie_name: &str) -> tide::App<()> {
-        let mut app = crate::App::new(());
+        let mut app = tide::App::new(());
         app.middleware(SecurityMiddleware::new(
             CookieSecurityPolicy::new(&[0; 32]).name(cookie_name),
         ));
@@ -238,7 +237,7 @@ mod tests {
     }
 
     fn app() -> tide::App<()> {
-        let mut app = crate::App::new(());
+        let mut app = tide::App::new(());
         app.middleware(SecurityMiddleware::default());
 
         app.at("/get").get(retrieve_user_info);
@@ -248,119 +247,85 @@ mod tests {
         app
     }
 
-    fn server<AppData: Send + Sync + 'static>(
-        app: tide::App<AppData>,
-    ) -> TestBackend<tide::Server<AppData>> {
-        make_server(app.into_http_service()).unwrap()
-    }
-
-    fn call(server: &mut TestBackend<tide::Server<()>>, req: Request) -> Response {
-        let res = server.simulate(req).unwrap();
-        res
-    }
-
-    fn get_cookie(cookie_name: &str, headers: &HeaderMap) -> Option<Cookie<'static>> {
-        let cookie_header = headers.get(header::SET_COOKIE).unwrap().to_str().unwrap();
-        let auth_cookie = cookie_header
-            .split(';')
-            .map(str::trim)
-            .find(|s| s.starts_with(cookie_name))
-            .unwrap();
-        Cookie::parse_encoded(auth_cookie.to_owned()).ok()
-    }
-
     #[test]
     fn successfully_retrieve_request_user_info() {
-        let mut server = server(app());
+        let mut server = init_service(app());
         let req = http::Request::get("/get").body(Body::empty()).unwrap();
-        let res = call(&mut server, req);
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        let body = block_on(res.into_body().into_vec()).unwrap();
-        assert_eq!(&*body, &*b"\"anonymous\"");
+        assert_eq!(res.read_body(), "\"anonymous\"");
     }
 
     #[test]
     fn successfully_remember_user_info() {
-        let mut server = server(app());
+        let mut server = init_service(app());
 
-        let req = http::Request::get("/remember").body(Body::empty()).unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/remember").to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
+        let auth_cookie = res.get_cookie("tide-auth").unwrap();
 
-        println!("{}", auth_cookie.encoded().to_string());
-        let req = http::Request::get("/get")
-            .header(header::COOKIE, auth_cookie.encoded().to_string())
-            .body(Body::empty())
-            .unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/get").cookie(&auth_cookie).to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        let body = block_on(res.into_body().into_vec()).unwrap();
-        assert_eq!(&*body, &*b"\"remembered\"");
+        assert_eq!(res.read_body(), "\"remembered\"");
     }
 
     #[test]
     fn successfully_check_user_authority() {
-        let mut server = server(app());
+        let mut server = init_service(app());
 
-        let req = http::Request::get("/remember").body(Body::empty()).unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/remember").to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
+        let auth_cookie = res.get_cookie("tide-auth").unwrap();
 
         let req = http::Request::get("/check")
-            .header(header::COOKIE, auth_cookie.encoded().to_string())
-            .body(Body::empty())
-            .unwrap();
-        let res = call(&mut server, req);
+            .cookie(&auth_cookie)
+            .to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        let body = block_on(res.into_body().into_vec()).unwrap();
-        assert_eq!(&*body, &*b"true");
+        assert_eq!(res.read_body(), "true");
     }
 
     #[test]
     fn successfully_forget_user_info() {
-        let mut server = server(app());
+        let mut server = init_service(app());
 
-        let req = http::Request::get("/remember").body(Body::empty()).unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/remember").to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = get_cookie("tide-auth", res.headers()).unwrap();
+        let auth_cookie = res.get_cookie("tide-auth").unwrap();
 
         let req = http::Request::get("/forget")
-            .header(header::COOKIE, auth_cookie.encoded().to_string())
-            .body(Body::empty())
-            .unwrap();
-        let res = call(&mut server, req);
+            .cookie(&auth_cookie)
+            .to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let req = http::Request::get("/get")
-            .header(header::COOKIE, auth_cookie.encoded().to_string())
-            .body(Body::empty())
-            .unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/get").cookie(&auth_cookie).to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        let body = block_on(res.into_body().into_vec()).unwrap();
-        assert_eq!(&*body, &*b"\"remembered\"");
+        assert_eq!(res.read_body(), "\"remembered\"");
     }
 
     #[test]
     fn successfully_set_cookie_security_policy_cookie_name() {
-        let mut server = server(named_cookie_app("test-cookie123"));
+        let mut server = init_service(named_cookie_app("test-cookie123"));
 
-        let req = http::Request::get("/remember").body(Body::empty()).unwrap();
-        let res = call(&mut server, req);
+        let req = http::Request::get("/remember").to_request();
+        let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert!(res.headers().contains_key(header::SET_COOKIE));
 
-        let auth_cookie = get_cookie("test-cookie123", res.headers());
+        let auth_cookie = res.get_cookie("test-cookie123");
         assert!(auth_cookie.is_some());
     }
 }

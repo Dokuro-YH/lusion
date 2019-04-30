@@ -20,6 +20,9 @@ pub mod resp;
 pub mod schema;
 pub mod security;
 
+#[cfg(test)]
+mod test_helpers;
+
 use std::{env, io};
 
 use http::StatusCode;
