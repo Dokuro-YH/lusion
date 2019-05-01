@@ -8,7 +8,7 @@ use tide::middleware::{Middleware, Next};
 use tide::Context;
 use time::Duration;
 
-use crate::security::SecurityContext;
+use crate::security::{SecurityContext, SecuritySubject};
 
 pub struct SecurityMiddleware {
     policy: Box<dyn SecurityPolicy>,
@@ -36,23 +36,32 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for SecurityMiddleware {
         mut cx: Context<Data>,
         next: Next<'a, Data>,
     ) -> FutureObj<'a, Response> {
-        let sc = self.policy.from_request(cx.request()).unwrap();
-
+        let subject = self.policy.from_request(cx.request()).unwrap();
+        let sc = SecurityContext::new(subject);
         box_async! {
             cx.extensions_mut().insert(sc.clone());
+
             let resp = await!(next.run(cx));
 
-            self.policy.write_response(sc, resp).unwrap()
+            if sc.is_changed() {
+                self.policy.write_response(sc.subject(), resp).unwrap()
+            } else {
+                resp
+            }
         }
     }
 }
 
-/// An `SecurityContext` storage policy.
+/// An `SecuritySubject` storage policy.
 pub trait SecurityPolicy: 'static + Send + Sync {
-    /// Load `SecurityContext` from `Request`.
-    fn from_request(&self, req: &Request) -> Result<SecurityContext, StringError>;
+    /// Load `SecuritySubject` from `Request`.
+    fn from_request(&self, req: &Request) -> Result<Option<SecuritySubject>, StringError>;
 
-    fn write_response(&self, sc: SecurityContext, resp: Response) -> Result<Response, StringError>;
+    fn write_response(
+        &self,
+        subject: Option<SecuritySubject>,
+        resp: Response,
+    ) -> Result<Response, StringError>;
 }
 
 pub struct CookieSecurityPolicy {
@@ -116,7 +125,7 @@ impl Default for CookieSecurityPolicy {
 }
 
 impl SecurityPolicy for CookieSecurityPolicy {
-    fn from_request(&self, req: &Request) -> Result<SecurityContext, StringError> {
+    fn from_request(&self, req: &Request) -> Result<Option<SecuritySubject>, StringError> {
         let mut jar = CookieJar::new();
 
         for hdr in req.headers().get_all(http::header::COOKIE) {
@@ -133,60 +142,56 @@ impl SecurityPolicy for CookieSecurityPolicy {
             }
         }
 
-        let subject = if let Some(auth_cookie) = jar.private(&self.key).get(&self.name) {
+        if let Some(auth_cookie) = jar.private(&self.key).get(&self.name) {
             let subject = serde_json::from_str(auth_cookie.value())
                 .map_err(|e| StringError(format!("Failed to deserialize: {}", e)))?;
 
-            Some(subject)
+            Ok(Some(subject))
         } else {
-            None
-        };
-
-        Ok(SecurityContext::new(subject))
+            Ok(None)
+        }
     }
 
     fn write_response(
         &self,
-        sc: SecurityContext,
+        subject: Option<SecuritySubject>,
         mut resp: Response,
     ) -> Result<Response, StringError> {
-        if sc.is_changed() {
-            let mut jar = CookieJar::new();
-            let mut cookie = Cookie::named(self.name.clone());
-            cookie.set_path(self.path.clone());
-            cookie.set_secure(self.secure);
-            cookie.set_http_only(true);
+        let mut jar = CookieJar::new();
+        let mut cookie = Cookie::named(self.name.clone());
+        cookie.set_path(self.path.clone());
+        cookie.set_secure(self.secure);
+        cookie.set_http_only(true);
 
-            if let Some(ref domain) = self.domain {
-                cookie.set_domain(domain.clone());
-            }
+        if let Some(ref domain) = self.domain {
+            cookie.set_domain(domain.clone());
+        }
 
-            if let Some(max_age) = self.max_age {
-                cookie.set_max_age(max_age);
-            }
+        if let Some(max_age) = self.max_age {
+            cookie.set_max_age(max_age);
+        }
 
-            if let Some(subject) = sc.subject() {
-                let value = serde_json::to_string(&subject)
-                    .map_err(|e| StringError(format!("Failed to serialize: {}", e)))?;
-                cookie.set_value(value);
+        if let Some(subject) = subject {
+            let value = serde_json::to_string(&subject)
+                .map_err(|e| StringError(format!("Failed to serialize: {}", e)))?;
+            cookie.set_value(value);
 
-                jar.private(&self.key).add(cookie);
+            jar.private(&self.key).add(cookie);
+        } else {
+            jar.add_original(cookie.clone());
+            jar.private(&self.key).remove(cookie);
+        }
+
+        for cookie in jar.delta() {
+            let hv = HeaderValue::from_str(&cookie.to_string());
+            if let Ok(val) = hv {
+                resp.headers_mut().append(header::SET_COOKIE, val);
             } else {
-                jar.add_original(cookie.clone());
-                jar.private(&self.key).remove(cookie);
-            }
-
-            for cookie in jar.delta() {
-                let hv = HeaderValue::from_str(&cookie.to_string());
-                if let Ok(val) = hv {
-                    resp.headers_mut().append(header::SET_COOKIE, val);
-                } else {
-                    return Ok(http::Response::builder()
-                        .status(http::status::StatusCode::INTERNAL_SERVER_ERROR)
-                        .header("Content-Type", "text/plain; charset=utf-8")
-                        .body(http_service::Body::empty())
-                        .unwrap());
-                }
+                return Ok(http::Response::builder()
+                    .status(http::status::StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("Content-Type", "text/plain; charset=utf-8")
+                    .body(http_service::Body::empty())
+                    .unwrap());
             }
         }
 

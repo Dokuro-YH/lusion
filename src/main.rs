@@ -29,7 +29,7 @@ use std::{env, io};
 
 use crate::db::PgPool;
 use crate::graphql::{get_graphiql, post_graphql};
-use crate::middleware::{CookieSecurityPolicy, SecurityMiddleware};
+use crate::middleware::security::{CookieSecurityPolicy, SecurityMiddleware};
 
 static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 

@@ -34,20 +34,23 @@ impl SecuritySubject {
 
 /// Security context.
 #[derive(Debug)]
-pub struct SecurityContext {
+pub(crate) struct SecurityContext {
     inner: Arc<RwLock<SecurityContextInner>>,
 }
 
 impl SecurityContext {
     pub fn new(s: Option<SecuritySubject>) -> Self {
-        let inner = SecurityContextInner::new(s);
+        let inner = SecurityContextInner {
+            subject: s,
+            changed: false,
+        };
         Self {
             inner: Arc::new(RwLock::new(inner)),
         }
     }
 
     pub fn subject(&self) -> Option<SecuritySubject> {
-        self.inner.read().unwrap().subject.clone()
+        self.inner.read().unwrap().subject.as_ref().cloned()
     }
 
     pub fn is_changed(&self) -> bool {
@@ -68,27 +71,11 @@ struct SecurityContextInner {
     changed: bool,
 }
 
-impl SecurityContextInner {
-    fn new(s: Option<SecuritySubject>) -> Self {
-        Self {
-            subject: s,
-            changed: false,
-        }
-    }
-
-    fn update(&mut self, subject: SecuritySubject) {
-        self.subject = Some(subject);
-        self.changed = true;
-    }
-
-    fn clear(&mut self) {
-        self.subject = None;
-        self.changed = true;
-    }
-}
-
 /// An extension to `Context` that provides security context.
 pub trait SecurityExt {
+    /// Get current subject.
+    fn subject(&mut self) -> Result<Option<SecuritySubject>, StringError>;
+
     /// Get current principal.
     fn principal(&mut self) -> Result<Option<String>, StringError>;
 
@@ -106,6 +93,20 @@ pub trait SecurityExt {
 }
 
 impl<AppData> SecurityExt for Context<AppData> {
+    fn subject(&mut self) -> Result<Option<SecuritySubject>, StringError> {
+        let sc = self
+            .extensions()
+            .get::<SecurityContext>()
+            .ok_or_else(|| StringError(MIDDLEWARE_MISSING_MSG.to_owned()))?;
+
+        let locked_inner = sc
+            .inner
+            .read()
+            .map_err(|e| StringError(format!("Failed to get read lock: {}", e)))?;
+
+        Ok(locked_inner.subject.as_ref().cloned())
+    }
+
     fn principal(&mut self) -> Result<Option<String>, StringError> {
         let sc = self
             .extensions()
@@ -157,7 +158,8 @@ impl<AppData> SecurityExt for Context<AppData> {
             .write()
             .map_err(|e| StringError(format!("Failed to get write lock: {}", e)))?;
 
-        locked_inner.update(SecuritySubject::new(principal.into(), authorities));
+        locked_inner.subject = Some(SecuritySubject::new(principal.into(), authorities));
+        locked_inner.changed = true;
 
         Ok(())
     }
@@ -172,7 +174,11 @@ impl<AppData> SecurityExt for Context<AppData> {
             .inner
             .write()
             .map_err(|e| StringError(format!("Failed to get write lock: {}", e)))?;
-        locked_inner.clear();
+
+        if locked_inner.subject.is_some() {
+            locked_inner.subject = None;
+            locked_inner.changed = true;
+        };
 
         Ok(())
     }
