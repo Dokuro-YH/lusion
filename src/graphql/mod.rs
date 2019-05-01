@@ -33,11 +33,12 @@ pub async fn get_graphiql(_: Context<PgPool>) -> Response {
 }
 
 pub async fn post_graphql(mut ctx: Context<PgPool>) -> Result<Response, Error> {
-    let pool = ctx.app_data();
-    let conn = pool.get_conn()?;
+    let req: GraphQLRequest = await!(ctx.body_json()).context(ErrorKind::BadRequest)?;
     let schema = Schema::new(QueryRoot, MutationRoot);
-    let req: GraphQLRequest = await!(ctx.body_json()).context(ErrorKind::GraphqlError)?;
-    let res = req.execute(&schema, &conn);
+
+    let pool = ctx.app_data();
+    let res = pool.transaction(|conn| Ok(req.execute(&schema, &conn)))?;
+
     let status = if res.is_ok() {
         StatusCode::OK
     } else {

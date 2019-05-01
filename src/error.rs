@@ -25,7 +25,10 @@ pub enum ErrorKind {
     #[fail(display = "Database access error")]
     DbError,
 
-    #[fail(display = "Not found")]
+    #[fail(display = "Bad Request")]
+    BadRequest,
+
+    #[fail(display = "Not Found")]
     NotFound,
 }
 
@@ -43,6 +46,7 @@ impl Error {
     pub fn status(&self) -> StatusCode {
         use self::ErrorKind::*;
         match self.kind() {
+            BadRequest => StatusCode::BAD_REQUEST,
             NotFound => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
