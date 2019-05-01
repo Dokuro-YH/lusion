@@ -27,10 +27,10 @@ graphql_object!(Human: PgConn |&self| {
 });
 
 graphql_object!(QueryHuman: PgConn |&self| {
-    field get(&executor, human_id: Uuid) -> Result<Option<Human>> {
+    field get(&executor, human_id: Uuid) -> Result<Human> {
         let conn = executor.context();
         let human = conn.find_human(&human_id)?;
-        Ok(human)
+        Ok(human.ok_or(ErrorKind::NotFound)?)
     }
 
     field query(&executor) -> Result<Vec<Human>> {
@@ -56,7 +56,6 @@ graphql_object!(MutationHuman: PgConn |&self| {
     field delete(&executor, human_id: Uuid) -> Result<()> {
         let conn = executor.context();
         conn.delete_human(&human_id)?;
-
         Ok(())
     }
 });

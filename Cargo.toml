@@ -36,3 +36,6 @@ version = "0.4"
 [dependencies.diesel]
 features = ["r2d2", "uuid", "chrono", "serde_json", "postgres"]
 version = "1.4"
+
+[dev-dependencies]
+assert_matches = "1.2"

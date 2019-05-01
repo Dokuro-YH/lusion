@@ -1,4 +1,5 @@
 //! Test helpers.
+pub use assert_matches::assert_matches;
 use cookie::Cookie;
 use futures::executor::block_on;
 use http_service::{Body, Request, Response};
