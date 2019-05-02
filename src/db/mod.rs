@@ -1,5 +1,6 @@
 //! Database access module.
 pub mod humans;
+pub mod users;
 
 use std::ops::Deref;
 
@@ -7,7 +8,7 @@ use diesel::connection::{Connection, TransactionManager};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 
-use crate::error::{Error, ErrorKind, ResultExt};
+use crate::error::{Error, ResultExt};
 
 pub struct PgPool(Pool<ConnectionManager<PgConnection>>);
 
@@ -19,7 +20,7 @@ impl PgPool {
     }
 
     pub fn get_conn(&self) -> Result<PgConn, Error> {
-        let conn = self.0.get().context(ErrorKind::DbPoolError)?;
+        let conn = self.0.get().db_error()?;
         Ok(PgConn::new(conn))
     }
 
@@ -29,20 +30,16 @@ impl PgPool {
     {
         let conn = self.get_conn()?;
         let transaction_manager = conn.transaction_manager();
-        transaction_manager
-            .begin_transaction(&*conn)
-            .context(ErrorKind::DbTransaction)?;
+        transaction_manager.begin_transaction(&*conn).db_error()?;
         match f(&conn) {
             Ok(value) => {
-                transaction_manager
-                    .commit_transaction(&*conn)
-                    .context(ErrorKind::DbTransaction)?;
+                transaction_manager.commit_transaction(&*conn).db_error()?;
                 Ok(value)
             }
             Err(e) => {
                 transaction_manager
                     .rollback_transaction(&*conn)
-                    .context(ErrorKind::DbTransaction)?;
+                    .db_error()?;
                 Err(e)
             }
         }
@@ -56,15 +53,13 @@ impl PgPool {
         let conn = self.get_conn()?;
         let transaction_manager = conn.transaction_manager();
 
-        transaction_manager
-            .begin_transaction(&*conn)
-            .context(ErrorKind::DbTransaction)?;
+        transaction_manager.begin_transaction(&*conn).db_error()?;
 
         let result = f(&conn);
 
         transaction_manager
             .rollback_transaction(&*conn)
-            .context(ErrorKind::DbTransaction)?;
+            .db_error()?;
 
         result
     }

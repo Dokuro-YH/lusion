@@ -4,7 +4,7 @@ use crate::db::{
     humans::{CreateHuman, Human, HumanRepository, UpdateHuman},
     PgConn,
 };
-use crate::error::{ErrorKind, Result};
+use crate::error::{self, Result};
 
 pub struct QueryHuman;
 pub struct MutationHuman;
@@ -30,7 +30,7 @@ graphql_object!(QueryHuman: PgConn |&self| {
     field get(&executor, human_id: Uuid) -> Result<Human> {
         let conn = executor.context();
         let human = conn.find_human(&human_id)?;
-        Ok(human.ok_or(ErrorKind::NotFound)?)
+        human.ok_or(error::user_error("Not Found"))
     }
 
     field query(&executor) -> Result<Vec<Human>> {
@@ -50,7 +50,7 @@ graphql_object!(MutationHuman: PgConn |&self| {
     field update(&executor, human_id: Uuid, input: UpdateHuman) -> Result<Human> {
         let conn = executor.context();
         let human = conn.update_human(&human_id, input)?;
-        Ok(human.ok_or(ErrorKind::NotFound)?)
+        human.ok_or(error::user_error("Not Found"))
     }
 
     field delete(&executor, human_id: Uuid) -> Result<()> {

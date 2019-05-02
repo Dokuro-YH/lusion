@@ -7,29 +7,23 @@ use http_service::{Body, Response};
 use juniper::{FieldError, IntoFieldError};
 use tide::response::IntoResponse;
 
-pub use failure::ResultExt;
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
+pub fn user_error<S: Into<String>>(msg: S) -> Error {
+    let kind = ErrorKind::UserError(msg.into());
+    Error {
+        inner: Context::new(kind),
+    }
+}
+
 /// A list specifying general categories of application error.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Fail)]
+#[derive(Debug, Clone, Eq, PartialEq, Fail)]
 pub enum ErrorKind {
-    #[fail(display = "Failed to execute graphql")]
-    GraphqlError,
-
-    #[fail(display = "Failed to get connection")]
-    DbPoolError,
-
-    #[fail(display = "Database transaction error")]
-    DbTransaction,
-
     #[fail(display = "Database access error")]
     DbError,
 
-    #[fail(display = "Bad Request")]
-    BadRequest,
-
-    #[fail(display = "Not Found")]
-    NotFound,
+    #[fail(display = "{}", _0)]
+    UserError(String),
 }
 
 /// Genernal error type.
@@ -40,14 +34,13 @@ pub struct Error {
 
 impl Error {
     pub fn kind(&self) -> ErrorKind {
-        *self.inner.get_context()
+        self.inner.get_context().clone()
     }
 
     pub fn status(&self) -> StatusCode {
         use self::ErrorKind::*;
         match self.kind() {
-            BadRequest => StatusCode::BAD_REQUEST,
-            NotFound => StatusCode::NOT_FOUND,
+            UserError(_) => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -69,33 +62,48 @@ impl Display for Error {
     }
 }
 
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Error {
-        Error {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<ErrorKind>> for Error {
-    fn from(inner: Context<ErrorKind>) -> Error {
-        Error { inner }
-    }
-}
-
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let status = self.status();
+        let payload = json!({ "message": format!("{}", self.kind()) });
+
         http::Response::builder()
             .status(status)
             .header("Content-Type", "application/json")
-            .body(Body::empty())
+            .body(Body::from(serde_json::to_vec(&payload).unwrap()))
             .unwrap()
     }
 }
 
 impl IntoFieldError for Error {
     fn into_field_error(self) -> FieldError {
-        FieldError::new("Custom error", graphql_value!({ "cause": "tttttt"}))
+        FieldError::new(format!("{}", self.kind()), juniper::Value::Null)
+    }
+}
+
+pub trait ResultExt<T, E> {
+    fn kind(self, kind: ErrorKind) -> Result<T, Error>;
+
+    fn db_error(self) -> Result<T, Error>;
+
+    fn user_error<S: Into<String>>(self, msg: S) -> Result<T, Error>;
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, E>
+where
+    E: Fail,
+{
+    fn kind(self, kind: ErrorKind) -> Result<T, Error> {
+        self.map_err(|err| Error {
+            inner: err.context(kind),
+        })
+    }
+
+    fn db_error(self) -> Result<T, Error> {
+        self.kind(ErrorKind::DbError)
+    }
+
+    fn user_error<S: Into<String>>(self, msg: S) -> Result<T, Error> {
+        self.kind(ErrorKind::UserError(msg.into()))
     }
 }

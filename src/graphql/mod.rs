@@ -7,7 +7,7 @@ use juniper::http::GraphQLRequest;
 use tide::{Context, Response};
 
 use crate::db::{PgConn, PgPool};
-use crate::error::{Error, ErrorKind, ResultExt};
+use crate::error::{Error, ResultExt};
 use crate::resp;
 
 /// Graphql schema.
@@ -33,7 +33,7 @@ pub async fn get_graphiql(_: Context<PgPool>) -> Response {
 }
 
 pub async fn post_graphql(mut ctx: Context<PgPool>) -> Result<Response, Error> {
-    let req: GraphQLRequest = await!(ctx.body_json()).context(ErrorKind::BadRequest)?;
+    let req: GraphQLRequest = await!(ctx.body_json()).user_error("graphql parse error".to_owned())?;
     let schema = Schema::new(QueryRoot, MutationRoot);
 
     let pool = ctx.app_data();
