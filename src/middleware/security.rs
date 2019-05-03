@@ -8,7 +8,7 @@ use tide::middleware::{Middleware, Next};
 use tide::Context;
 use time::Duration;
 
-use crate::security::{SecurityContext, Identity};
+use crate::security::{Identity, SecurityContext};
 
 pub struct SecurityMiddleware {
     policy: Box<dyn SecurityIdentityPolicy>,

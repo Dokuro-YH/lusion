@@ -15,6 +15,7 @@ before_script:
   - diesel setup
 
 script:
+  - cargo update
   - cargo check --all --verbose
   - cargo test --all --verbose
 
