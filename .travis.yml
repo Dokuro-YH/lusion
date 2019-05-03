@@ -25,7 +25,7 @@ after_success:
     if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
         RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed."
 
-        cargo tarpaulin --out Xml
+        cargo tarpaulin -all --out Xml
         bash <(curl -s https://codecov.io/bash)
         echo "Uploaded code coverage"
     fi
