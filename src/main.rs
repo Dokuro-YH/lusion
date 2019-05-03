@@ -31,7 +31,7 @@ use std::{env, io};
 
 use crate::db::PgPool;
 use crate::graphql::{get_graphiql, post_graphql};
-use crate::middleware::security::{CookieSecurityPolicy, SecurityMiddleware};
+use crate::middleware::security::{CookieIdentityPolicy, SecurityMiddleware};
 
 static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 
@@ -43,7 +43,7 @@ fn main() -> io::Result<()> {
 
     let mut app = tide::App::new(pool);
     app.middleware(SecurityMiddleware::new(
-        CookieSecurityPolicy::new(AUTH_SIGNING_KEY)
+        CookieIdentityPolicy::new(AUTH_SIGNING_KEY)
             .path("/")
             .name("auth-cookie")
             .domain("localhost")

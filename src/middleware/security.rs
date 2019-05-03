@@ -8,14 +8,14 @@ use tide::middleware::{Middleware, Next};
 use tide::Context;
 use time::Duration;
 
-use crate::security::{SecurityContext, SecuritySubject};
+use crate::security::{SecurityContext, Identity};
 
 pub struct SecurityMiddleware {
-    policy: Box<dyn SecurityPolicy>,
+    policy: Box<dyn SecurityIdentityPolicy>,
 }
 
 impl SecurityMiddleware {
-    pub fn new<T: SecurityPolicy>(policy: T) -> Self {
+    pub fn new<T: SecurityIdentityPolicy>(policy: T) -> Self {
         Self {
             policy: Box::new(policy),
         }
@@ -25,7 +25,7 @@ impl SecurityMiddleware {
 impl Default for SecurityMiddleware {
     fn default() -> Self {
         Self {
-            policy: Box::new(CookieSecurityPolicy::default()),
+            policy: Box::new(CookieIdentityPolicy::default()),
         }
     }
 }
@@ -36,15 +36,15 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for SecurityMiddleware {
         mut cx: Context<Data>,
         next: Next<'a, Data>,
     ) -> FutureObj<'a, Response> {
-        let subject = self.policy.from_request(cx.request()).unwrap();
-        let sc = SecurityContext::new(subject);
+        let identity = self.policy.from_request(cx.request()).unwrap();
+        let sc = SecurityContext::new(identity);
         box_async! {
             cx.extensions_mut().insert(sc.clone());
 
             let resp = await!(next.run(cx));
 
             if sc.is_changed() {
-                self.policy.write_response(sc.subject(), resp).unwrap()
+                self.policy.write_response(sc.identity(), resp).unwrap()
             } else {
                 resp
             }
@@ -52,19 +52,19 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for SecurityMiddleware {
     }
 }
 
-/// An `SecuritySubject` storage policy.
-pub trait SecurityPolicy: 'static + Send + Sync {
-    /// Load `SecuritySubject` from `Request`.
-    fn from_request(&self, req: &Request) -> Result<Option<SecuritySubject>, StringError>;
+/// An `Identity` storage policy.
+pub trait SecurityIdentityPolicy: 'static + Send + Sync {
+    /// Load `Identity` from `Request`.
+    fn from_request(&self, req: &Request) -> Result<Option<Identity>, StringError>;
 
     fn write_response(
         &self,
-        subject: Option<SecuritySubject>,
+        identity: Option<Identity>,
         resp: Response,
     ) -> Result<Response, StringError>;
 }
 
-pub struct CookieSecurityPolicy {
+pub struct CookieIdentityPolicy {
     key: Key,
     path: String,
     name: String,
@@ -73,7 +73,7 @@ pub struct CookieSecurityPolicy {
     max_age: Option<Duration>,
 }
 
-impl CookieSecurityPolicy {
+impl CookieIdentityPolicy {
     pub fn new(key: &[u8]) -> Self {
         Self {
             key: Key::from_master(key),
@@ -111,7 +111,7 @@ impl CookieSecurityPolicy {
     }
 }
 
-impl Default for CookieSecurityPolicy {
+impl Default for CookieIdentityPolicy {
     fn default() -> Self {
         Self {
             key: Key::generate(),
@@ -124,8 +124,8 @@ impl Default for CookieSecurityPolicy {
     }
 }
 
-impl SecurityPolicy for CookieSecurityPolicy {
-    fn from_request(&self, req: &Request) -> Result<Option<SecuritySubject>, StringError> {
+impl SecurityIdentityPolicy for CookieIdentityPolicy {
+    fn from_request(&self, req: &Request) -> Result<Option<Identity>, StringError> {
         let mut jar = CookieJar::new();
 
         for hdr in req.headers().get_all(http::header::COOKIE) {
@@ -143,10 +143,10 @@ impl SecurityPolicy for CookieSecurityPolicy {
         }
 
         if let Some(auth_cookie) = jar.private(&self.key).get(&self.name) {
-            let subject = serde_json::from_str(auth_cookie.value())
+            let identity = serde_json::from_str(auth_cookie.value())
                 .map_err(|e| StringError(format!("Failed to deserialize: {}", e)))?;
 
-            Ok(Some(subject))
+            Ok(Some(identity))
         } else {
             Ok(None)
         }
@@ -154,7 +154,7 @@ impl SecurityPolicy for CookieSecurityPolicy {
 
     fn write_response(
         &self,
-        subject: Option<SecuritySubject>,
+        identity: Option<Identity>,
         mut resp: Response,
     ) -> Result<Response, StringError> {
         let mut jar = CookieJar::new();
@@ -171,8 +171,8 @@ impl SecurityPolicy for CookieSecurityPolicy {
             cookie.set_max_age(max_age);
         }
 
-        if let Some(subject) = subject {
-            let value = serde_json::to_string(&subject)
+        if let Some(identity) = identity {
+            let value = serde_json::to_string(&identity)
                 .map_err(|e| StringError(format!("Failed to serialize: {}", e)))?;
             cookie.set_value(value);
 
@@ -206,39 +206,32 @@ mod tests {
     use crate::security::SecurityExt;
     use crate::test_helpers::*;
     use http::StatusCode;
-    use http_service::Body;
 
-    async fn retrieve_user_info(mut ctx: Context<()>) -> Response {
+    async fn retrieve(mut ctx: Context<()>) -> Response {
         let res = ctx
-            .principal()
+            .identity()
             .unwrap()
-            .unwrap_or_else(|| "anonymous".to_owned());
+            .unwrap_or_else(|| Identity::new("anonymous"));
         resp::json(StatusCode::OK, res)
     }
 
-    async fn check_user_authority(mut ctx: Context<()>) -> Response {
-        let res = ctx.check_authority("user").unwrap();
-        resp::json(StatusCode::OK, res)
+    async fn remember(mut ctx: Context<()>) {
+        ctx.remember(Identity::new("user")).unwrap();
     }
 
-    async fn remember_user_info(mut ctx: Context<()>) {
-        ctx.remember("remembered", vec!["user".to_owned()]).unwrap();
-    }
-
-    async fn forget_user_info(mut ctx: Context<()>) {
+    async fn forget(mut ctx: Context<()>) {
         ctx.forget().unwrap();
     }
 
     fn named_cookie_app(cookie_name: &str) -> tide::App<()> {
         let mut app = tide::App::new(());
         app.middleware(SecurityMiddleware::new(
-            CookieSecurityPolicy::new(&[0; 32]).name(cookie_name),
+            CookieIdentityPolicy::new(&[0; 32]).name(cookie_name),
         ));
 
-        app.at("/get").get(retrieve_user_info);
-        app.at("/remember").get(remember_user_info);
-        app.at("/check").get(check_user_authority);
-        app.at("/forget").get(forget_user_info);
+        app.at("/get").get(retrieve);
+        app.at("/remember").get(remember);
+        app.at("/forget").get(forget);
         app
     }
 
@@ -246,24 +239,23 @@ mod tests {
         let mut app = tide::App::new(());
         app.middleware(SecurityMiddleware::default());
 
-        app.at("/get").get(retrieve_user_info);
-        app.at("/remember").get(remember_user_info);
-        app.at("/check").get(check_user_authority);
-        app.at("/forget").get(forget_user_info);
+        app.at("/get").get(retrieve);
+        app.at("/remember").get(remember);
+        app.at("/forget").get(forget);
         app
     }
 
     #[test]
-    fn successfully_retrieve_request_user_info() {
+    fn test_retrieve() {
         let mut server = init_service(app());
-        let req = http::Request::get("/get").body(Body::empty()).unwrap();
+        let req = http::Request::get("/get").to_request();
         let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
         assert_eq!(res.read_body(), "\"anonymous\"");
     }
 
     #[test]
-    fn successfully_remember_user_info() {
+    fn test_remember() {
         let mut server = init_service(app());
 
         let req = http::Request::get("/remember").to_request();
@@ -276,30 +268,11 @@ mod tests {
         let req = http::Request::get("/get").cookie(&auth_cookie).to_request();
         let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        assert_eq!(res.read_body(), "\"remembered\"");
+        assert_eq!(res.read_body(), "\"user\"");
     }
 
     #[test]
-    fn successfully_check_user_authority() {
-        let mut server = init_service(app());
-
-        let req = http::Request::get("/remember").to_request();
-        let res = call_service(&mut server, req);
-        assert_eq!(res.status(), 200);
-        assert!(res.headers().contains_key(header::SET_COOKIE));
-
-        let auth_cookie = res.get_cookie("tide-auth").unwrap();
-
-        let req = http::Request::get("/check")
-            .cookie(&auth_cookie)
-            .to_request();
-        let res = call_service(&mut server, req);
-        assert_eq!(res.status(), 200);
-        assert_eq!(res.read_body(), "true");
-    }
-
-    #[test]
-    fn successfully_forget_user_info() {
+    fn test_forget() {
         let mut server = init_service(app());
 
         let req = http::Request::get("/remember").to_request();
@@ -319,11 +292,11 @@ mod tests {
         let req = http::Request::get("/get").cookie(&auth_cookie).to_request();
         let res = call_service(&mut server, req);
         assert_eq!(res.status(), 200);
-        assert_eq!(res.read_body(), "\"remembered\"");
+        assert_eq!(res.read_body(), "\"user\"");
     }
 
     #[test]
-    fn successfully_set_cookie_security_policy_cookie_name() {
+    fn test_set_cookie_identity_policy_cookie_name() {
         let mut server = init_service(named_cookie_app("test-cookie123"));
 
         let req = http::Request::get("/remember").to_request();
