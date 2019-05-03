@@ -1,0 +1,15 @@
+[package]
+name = "lusion-validator"
+version = "0.0.0"
+authors = ["Yanhai <shimmly@live.cn>"]
+edition = "2018"
+readme = "../README.md"
+license = "MIT or Apache-2.0"
+
+[dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[dev-dependencies]
+assert_matches = "1.2"

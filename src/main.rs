@@ -1,8 +1,8 @@
+//! An experimental, Web API based on async/await IO implementation.
 use std::{env, io};
 
-use lusion::db::PgPool;
-use lusion::graphql::{get_graphiql, post_graphql};
-use lusion::middleware::security::{CookieIdentityPolicy, SecurityMiddleware};
+use lusion_db::PgPool;
+use lusion_web::middleware::security::{CookieIdentityPolicy, SecurityMiddleware};
 
 static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 
@@ -22,8 +22,8 @@ fn main() -> io::Result<()> {
             .max_age(3600),
     ));
 
-    app.at("/graphiql").get(get_graphiql);
-    app.at("/graphql").post(post_graphql);
+    // app.at("/graphiql").get(get_graphiql);
+    // app.at("/graphql").post(post_graphql);
 
     Ok(app.serve("127.0.0.1:8000")?)
 }

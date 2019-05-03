@@ -4,7 +4,6 @@ use std::fmt::{self, Display};
 use failure::{Backtrace, Context, Fail};
 use http::StatusCode;
 use http_service::{Body, Response};
-use juniper::{FieldError, IntoFieldError};
 use tide::response::IntoResponse;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -72,12 +71,6 @@ impl IntoResponse for Error {
             .header("Content-Type", "application/json")
             .body(Body::from(serde_json::to_vec(&payload).unwrap()))
             .unwrap()
-    }
-}
-
-impl IntoFieldError for Error {
-    fn into_field_error(self) -> FieldError {
-        FieldError::new(format!("{}", self.kind()), juniper::Value::Null)
     }
 }
 

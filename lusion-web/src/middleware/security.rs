@@ -202,7 +202,7 @@ impl SecurityIdentityPolicy for CookieIdentityPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::resp;
+    use crate::response;
     use crate::security::SecurityExt;
     use crate::test_helpers::*;
     use http::StatusCode;
@@ -212,7 +212,7 @@ mod tests {
             .identity()
             .unwrap()
             .unwrap_or_else(|| Identity::new("anonymous"));
-        resp::json(StatusCode::OK, res)
+        response::json(StatusCode::OK, res)
     }
 
     async fn remember(mut ctx: Context<()>) {

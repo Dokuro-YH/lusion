@@ -74,7 +74,6 @@ impl<V> HasLength for HashSet<V> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::*;
 
     macro_rules! assert_validator_error {
         ([$($value:expr),*], $code:expr, min: $min:expr, max: $max:expr) => (

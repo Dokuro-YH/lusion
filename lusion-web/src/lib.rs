@@ -1,0 +1,22 @@
+#![feature(async_await, await_macro)]
+
+//! Lusion Web Application.
+
+#[macro_use]
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
+
+macro_rules! box_async {
+    {$($t:tt)*} => {
+        FutureObj::new(Box::new(async move { $($t)* }))
+    };
+}
+
+pub mod error;
+pub mod middleware;
+pub mod response;
+pub mod security;
+
+#[cfg(test)]
+mod test_helpers;

@@ -1,4 +1,10 @@
-//! Validation
+//! Lusion Validation.
+#[macro_use]
+extern crate serde_derive;
+#[cfg(test)]
+#[macro_use]
+extern crate assert_matches;
+
 mod error;
 mod length;
 
@@ -10,7 +16,7 @@ pub use self::length::{HasLength, Length, LengthValidator};
 /// # Examples
 ///
 /// ```rust
-/// use lusion::{validate, validator};
+/// use lusion_validator::{validate, Length};
 ///
 /// struct User {
 ///     username: String,
@@ -23,8 +29,8 @@ pub use self::length::{HasLength, Length, LengthValidator};
 /// };
 ///
 /// let errors = validate!(user, {
-///     username: [validator::Length(Some(1), Some(20))],
-///     password: [validator::Length(Some(1), Some(20))],
+///     username: [Length(Some(1), Some(20))],
+///     password: [Length(Some(1), Some(20))],
 /// });
 ///
 /// assert!(errors.is_empty());
@@ -34,7 +40,7 @@ macro_rules! validate {
     ($val:expr, {
         $($field:ident: [$($validator:expr),+]),+ $(,)*
     }) => ({
-        use $crate::validator::{ValidationErrors, Validator};
+        use $crate::{ValidationErrors, Validator};
 
         let mut errors = ValidationErrors::new();
 
@@ -72,7 +78,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::*;
 
     #[test]
     fn test_validator_for_option() {
@@ -97,8 +102,6 @@ mod tests {
 
     #[test]
     fn test_validate_macro() {
-        use crate::validator;
-
         struct User {
             username: String,
             password: String,
@@ -110,8 +113,8 @@ mod tests {
         };
 
         let errors = validate!(user, {
-            username: [validator::Length(Some(1), Some(20))],
-            password: [validator::Length(Some(1), Some(20))],
+            username: [Length(Some(1), Some(20))],
+            password: [Length(Some(1), Some(20))],
         });
 
         assert!(errors.is_empty());

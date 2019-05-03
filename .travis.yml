@@ -12,7 +12,7 @@ before_install:
 
 before_script:
   - echo "DATABASE_URL=postgres://postgres@localhost/lusion" > .env
-  - diesel setup
+  - diesel setup --migration-dir lusion-db/migrations
 
 script:
   - cargo update
