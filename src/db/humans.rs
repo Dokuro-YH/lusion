@@ -164,7 +164,7 @@ mod tests {
     use crate::test_helpers::*;
 
     #[test]
-    fn find_human_should_ok() {
+    fn test_find_human_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.find_human(&Uuid::new_v4()));
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn find_humans_should_ok() {
+    fn test_find_humans_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.find_humans());
@@ -180,96 +180,73 @@ mod tests {
     }
 
     #[test]
-    fn create_human_should_return_human_name() {
-        let pool = init_pool();
-
-        let human = pool
-            .test_transaction(|conn| {
-                conn.create_human(CreateHuman {
-                    name: "bob".to_owned(),
-                    friend_ids: vec![],
-                })
-            })
-            .unwrap();
-
-        assert_eq!(human.name, "bob");
-    }
-
-    #[test]
-    fn create_human_should_add_friends() {
-        let pool = init_pool();
-
-        let friends = pool
-            .test_transaction(|conn| {
-                let bob = conn.create_human(CreateHuman {
-                    name: "bob".to_owned(),
-                    friend_ids: vec![],
-                })?;
-
-                let alice = conn.create_human(CreateHuman {
-                    name: "alice".to_owned(),
-                    friend_ids: vec![bob.id],
-                })?;
-
-                conn.find_friends_by_human_id(&alice.id)
-            })
-            .unwrap();
-
-        assert_eq!(friends[0].name, "bob");
-    }
-
-    #[test]
-    fn update_human_should_ok() {
+    fn test_create_human_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| {
-            conn.update_human(
-                &Uuid::new_v4(),
-                UpdateHuman {
-                    name: "no exist".to_owned(),
-                    friend_ids: vec![],
-                },
-            )
+            let alice = conn.create_human(CreateHuman {
+                name: "alice".to_owned(),
+                friend_ids: vec![],
+            })?;
+
+            let bob = conn.create_human(CreateHuman {
+                name: "bob".to_owned(),
+                friend_ids: vec![alice.id],
+            })?;
+
+            let bob_friends = conn.find_friends_by_human_id(&bob.id)?;
+
+            Ok((bob, bob_friends, alice))
         });
 
-        assert!(result.is_ok());
+        assert_matches!(result, Ok((bob, bob_friends, alice)) => {
+            assert_eq!(bob.name, "bob");
+            assert_eq!(alice.name, "alice");
+            assert_eq!(bob_friends, vec![alice]);
+        });
     }
 
     #[test]
-    fn update_human_should_update_name_and_friends() {
+    fn test_update_human_should_ok() {
         let pool = init_pool();
 
-        let (updated, friends, alice) = pool
-            .test_transaction(|conn| {
-                let bob = conn.create_human(CreateHuman {
-                    name: "bob".to_owned(),
-                    friend_ids: vec![],
-                })?;
-                let alice = conn.create_human(CreateHuman {
-                    name: "alice".to_owned(),
-                    friend_ids: vec![],
-                })?;
+        let result = pool.test_transaction(|conn| {
+            let old_bob = conn.create_human(CreateHuman {
+                name: "old_bob".to_owned(),
+                friend_ids: vec![],
+            })?;
+            let old_bob_friends = conn.find_friends_by_human_id(&old_bob.id)?;
 
-                let updated = conn.update_human(
-                    &bob.id,
-                    UpdateHuman {
-                        name: "newname".to_owned(),
-                        friend_ids: vec![alice.id],
-                    },
-                )?;
-                let friends = conn.find_friends_by_human_id(&bob.id)?;
-                Ok((updated, friends, alice))
-            })
-            .unwrap();
+            let alice = conn.create_human(CreateHuman {
+                name: "alice".to_owned(),
+                friend_ids: vec![],
+            })?;
 
-        assert_matches!(updated, Some(bob) => {
-            assert_eq!(bob.name, "newname");
-            assert_eq!(friends, vec![alice]);
+            let new_bob = conn.update_human(
+                &old_bob.id,
+                UpdateHuman {
+                    name: "new_bob".to_owned(),
+                    friend_ids: vec![alice.id],
+                },
+            )?;
+            assert!(new_bob.is_some());
+            let new_bob = new_bob.unwrap();
+            let new_bob_friends = conn.find_friends_by_human_id(&new_bob.id)?;
+
+            Ok((old_bob, old_bob_friends, new_bob, new_bob_friends, alice))
+        });
+
+        assert_matches!(result, Ok((old_bob, old_bob_friends, new_bob, new_bob_friends, alice)) => {
+            assert_eq!(old_bob.name, "old_bob");
+            assert_eq!(new_bob.name, "new_bob");
+            assert_eq!(alice.name, "alice");
+            assert_eq!(old_bob_friends, vec![]);
+            assert_eq!(new_bob_friends, vec![alice]);
         })
     }
 
     #[test]
-    fn delete_human_should_ok() {
+    fn test_delete_human_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.delete_human(&Uuid::new_v4()));
@@ -278,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn find_friends_by_human_id_should_ok() {
+    fn test_find_friends_by_human_id_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.find_friends_by_human_id(&Uuid::new_v4()));

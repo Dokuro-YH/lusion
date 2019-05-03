@@ -150,7 +150,7 @@ mod tests {
     use crate::test_helpers::*;
 
     #[test]
-    fn find_users_should_ok() {
+    fn test_find_users_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.find_users());
@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn find_user_should_ok() {
+    fn test_find_user_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.find_user(&Uuid::new_v4()));
@@ -168,7 +168,7 @@ mod tests {
     }
 
     #[test]
-    fn create_user_should_return_user() {
+    fn test_create_user_should_ok() {
         let pool = init_pool();
         let result = pool.test_transaction(|conn| {
             conn.create_user(CreateUser {
@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    fn update_user_password_should_ok() {
+    fn test_update_user_password_should_return_some_user() {
         let pool = init_pool();
         let result = pool.test_transaction(|conn| {
             let user = conn.create_user(CreateUser {
@@ -205,11 +205,11 @@ mod tests {
             )
         });
 
-        assert!(result.is_ok());
+        assert_matches!(result, Ok(Some(_)));
     }
 
     #[test]
-    fn update_user_password_should_be_password_not_match_err() {
+    fn test_update_user_password_should_be_password_not_match_err() {
         let pool = init_pool();
         let result = pool.test_transaction(|conn| {
             let user = conn.create_user(CreateUser {
@@ -234,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_user_should_ok() {
+    fn test_delete_user_should_ok() {
         let pool = init_pool();
 
         let result = pool.test_transaction(|conn| conn.delete_user(&Uuid::new_v4()));

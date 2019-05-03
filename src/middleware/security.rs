@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn test_retrieve() {
+    fn test_retrieve_should_be_200() {
         let mut server = init_service(app());
         let req = http::Request::get("/get").to_request();
         let res = call_service(&mut server, req);
@@ -255,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn test_remember() {
+    fn test_remember_should_be_200() {
         let mut server = init_service(app());
 
         let req = http::Request::get("/remember").to_request();
@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn test_forget() {
+    fn test_forget_should_be_200() {
         let mut server = init_service(app());
 
         let req = http::Request::get("/remember").to_request();
