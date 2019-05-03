@@ -11,7 +11,7 @@ where
 {
     http::Response::builder()
         .status(status)
-        .header("Content-Type", "text/html")
+        .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_vec(&t).unwrap()))
         .unwrap()
 }
@@ -26,4 +26,50 @@ where
         .header("Content-Type", "text/html")
         .body(Body::from(t))
         .unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::*;
+
+    #[test]
+    fn test_json() {
+        let resp = json(http::StatusCode::OK, json!({ "message": "test" }));
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        let content_type = resp.headers().get(http::header::CONTENT_TYPE);
+        assert_matches!(content_type, Some(content_type) => {
+            assert_eq!(
+                content_type,
+                http::header::HeaderValue::from_static("application/json")
+            );
+        });
+
+        let body = resp.read_body();
+        let json: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(
+            json,
+            json!({
+                "message": "test"
+            })
+        );
+    }
+
+    #[test]
+    fn test_html() {
+        let resp = html(http::StatusCode::OK, "<h1>Hello World</h1>");
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        let content_type = resp.headers().get(http::header::CONTENT_TYPE);
+        assert_matches!(content_type, Some(content_type) => {
+            assert_eq!(
+                content_type,
+                http::header::HeaderValue::from_static("text/html")
+            );
+        });
+
+        let body = resp.read_body();
+        assert_eq!(body, "<h1>Hello World</h1>");
+    }
 }

@@ -19,13 +19,16 @@ script:
   - cargo check --all --verbose
   - cargo test --all --verbose
 
+before_cache: |
+    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
+        RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed."
+    fi
+
 after_success:
   # Codecov
   - |
     if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
-        RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed."
-
-        cargo tarpaulin -all --out Xml
+        cargo tarpaulin --all --out Xml
         bash <(curl -s https://codecov.io/bash)
         echo "Uploaded code coverage"
     fi

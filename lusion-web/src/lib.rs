@@ -6,6 +6,9 @@
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(test)]
+#[macro_use]
+extern crate assert_matches;
 
 macro_rules! box_async {
     {$($t:tt)*} => {
