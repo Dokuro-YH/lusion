@@ -22,7 +22,7 @@ script:
 after_success:
   # Codecov
   - |
-    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly" ]]; then
+    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
         RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed."
 
         cargo tarpaulin --out Xml
