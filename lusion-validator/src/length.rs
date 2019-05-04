@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::{ValidationError, Validator};
 
-/// Create a length validator, check to implement the `HasLength` trait object.
+/// Create a `LengthValidator`, validate to implement the `HasLength` trait object.
 #[allow(non_snake_case)]
 pub fn Length(min: Option<usize>, max: Option<usize>) -> LengthValidator {
     LengthValidator(min, max)
@@ -13,18 +13,18 @@ pub struct LengthValidator(Option<usize>, Option<usize>);
 
 impl<T> Validator<T> for LengthValidator
 where
-    T: serde::Serialize + HasLength,
+    T: HasLength,
 {
-    fn check(&self, value: &T) -> Option<ValidationError> {
+    fn validate(&self, value: &T) -> Option<ValidationError> {
         match (self.0, self.1) {
             (Some(min), Some(max)) if min > value.length() || value.length() > max => {
-                Some(ValidationError::new("length", value, &[min, max]))
+                Some(ValidationError::with_params("length", &[min, max]))
             }
             (Some(min), None) if min > value.length() => {
-                Some(ValidationError::new("min_length", value, &[min]))
+                Some(ValidationError::with_params("min_length", &[min]))
             }
             (None, Some(max)) if value.length() > max => {
-                Some(ValidationError::new("max_length", value, &[max]))
+                Some(ValidationError::with_params("max_length", &[max]))
             }
             _ => None,
         }
@@ -79,27 +79,27 @@ mod tests {
         ([$($value:expr),*], $code:expr, min: $min:expr, max: $max:expr) => (
             let validator = LengthValidator(Some($min), Some($max));
             $(
-                let error = validator.check($value);
+                let error = validator.validate($value);
                 assert_matches!(error, Some(err) => {
-                    assert_eq!(err, ValidationError::new($code, &$value, &vec![$min, $max]));
+                    assert_eq!(err, ValidationError::with_params($code, &vec![$min, $max]));
                 });
             )*
         );
         ([$($value:expr),*], $code:expr, min: $min:expr) => (
             let validator = LengthValidator(Some($min), None);
             $(
-                let error = validator.check($value);
+                let error = validator.validate($value);
                 assert_matches!(error, Some(err) => {
-                    assert_eq!(err, ValidationError::new($code, &$value, &vec![$min]));
+                    assert_eq!(err, ValidationError::with_params($code, &vec![$min]));
                 });
             )*
         );
         ([$($value:expr),*], $code:expr, max: $max:expr) => (
             let validator = LengthValidator(None, Some($max));
             $(
-                let error = validator.check($value);
+                let error = validator.validate($value);
                 assert_matches!(error, Some(err) => {
-                    assert_eq!(err, ValidationError::new($code, &$value, &vec![$max]));
+                    assert_eq!(err, ValidationError::with_params($code, &vec![$max]));
                 });
             )*
         );

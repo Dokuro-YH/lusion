@@ -46,7 +46,7 @@ macro_rules! validate {
 
         $(
             $(
-                if let Some(error) = $validator.check(&$val.$field) {
+                if let Some(error) = $validator.validate(&$val.$field) {
                     errors.entry(stringify!($field))
                         .or_insert_with(|| Vec::new())
                         .push(error);
@@ -58,18 +58,18 @@ macro_rules! validate {
     });
 }
 
-/// A `Validator` trait for check `T`
+/// A `Validator` trait for validate `T`
 pub trait Validator<T> {
-    fn check(&self, val: &T) -> Option<ValidationError>;
+    fn validate(&self, val: &T) -> Option<ValidationError>;
 }
 
 impl<T, V> Validator<Option<T>> for V
 where
     V: Validator<T>,
 {
-    fn check(&self, value: &Option<T>) -> Option<ValidationError> {
+    fn validate(&self, value: &Option<T>) -> Option<ValidationError> {
         match *value {
-            Some(ref value) => self.check(value),
+            Some(ref value) => self.validate(value),
             None => None,
         }
     }
@@ -84,19 +84,19 @@ mod tests {
         struct JustErrorValidator;
 
         impl Validator<()> for JustErrorValidator {
-            fn check(&self, val: &()) -> Option<ValidationError> {
-                Some(ValidationError::new("just_error", val, &Vec::<()>::new()))
+            fn validate(&self, _: &()) -> Option<ValidationError> {
+                Some(ValidationError::new("just_error"))
             }
         }
 
         let value = ();
-        let error = JustErrorValidator.check(&value);
+        let error = JustErrorValidator.validate(&value);
 
         assert_matches!(error, Some(err) => {
-            assert_eq!(err, ValidationError::new("just_error", &value, &Vec::<()>::new()));
+            assert_eq!(err, ValidationError::new("just_error"));
         });
 
-        let error = JustErrorValidator.check(&Option::<()>::None);
+        let error = JustErrorValidator.validate(&Option::<()>::None);
         assert_matches!(error, None);
     }
 
