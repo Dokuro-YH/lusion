@@ -2,12 +2,16 @@
 use std::{env, io};
 
 use lusion_db::PgPool;
+use lusion_web::middleware::fs::Static;
 use lusion_web::middleware::security::{CookieIdentityPolicy, SecurityMiddleware};
 
 static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 
 fn main() -> io::Result<()> {
+    env::set_var("RUST_LOG", "lusion_web=debug");
+
     dotenv::dotenv().ok();
+    env_logger::init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = PgPool::new(&database_url);
@@ -21,6 +25,7 @@ fn main() -> io::Result<()> {
             .secure(false)
             .max_age(3600),
     ));
+    app.middleware(Static::new("/images", "./images"));
 
     // app.at("/graphiql").get(get_graphiql);
     // app.at("/graphql").post(post_graphql);

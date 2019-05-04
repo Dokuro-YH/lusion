@@ -1,8 +1,32 @@
 //! Semantic HTTP response helpers.
 use bytes::Bytes;
+use futures::Stream;
 use http::{HttpTryFrom, StatusCode};
 use http_service::Body;
 use tide::Response;
+
+/// Set a empty body and generate `Response`
+pub fn empty<S>(status: S) -> Response
+where
+    StatusCode: HttpTryFrom<S>,
+{
+    http::Response::builder()
+        .status(status)
+        .body(Body::empty())
+        .unwrap()
+}
+
+/// Set a stream body and generate `Response`
+pub fn stream<S, T>(status: S, stream: T) -> Response
+where
+    StatusCode: HttpTryFrom<S>,
+    T: Stream<Item = Result<Bytes, std::io::Error>> + Send + 'static,
+{
+    http::Response::builder()
+        .status(status)
+        .body(Body::from_stream(stream))
+        .unwrap()
+}
 
 /// Set a json body and generate `Response`
 pub fn json<S, T: serde::Serialize>(status: S, t: T) -> Response
@@ -32,6 +56,24 @@ where
 mod tests {
     use super::*;
     use crate::test_helpers::*;
+
+    #[test]
+    fn test_empty() {
+        let resp = empty(http::StatusCode::OK);
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        let body = resp.read_body();
+        assert_eq!(body, "");
+    }
+
+    #[test]
+    fn test_stream() {
+        let resp = stream(http::StatusCode::OK, Body::empty());
+        assert_eq!(resp.status(), http::StatusCode::OK);
+
+        let body = resp.read_body();
+        assert_eq!(body, "");
+    }
 
     #[test]
     fn test_json() {
