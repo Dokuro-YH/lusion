@@ -1,6 +1,6 @@
 language: rust
 rust:
-  - nightly-2019-04-25
+  - nightly
 
 cache: cargo
 
@@ -20,14 +20,14 @@ script:
   - cargo test --all --verbose
 
 before_cache: |
-    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
+    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly" ]]; then
         RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin || echo "cargo-tarpaulin already installed."
     fi
 
 after_success:
   # Codecov
   - |
-    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly-2019-04-25" ]]; then
+    if [[ "$TRAVIS_RUST_VERSION" ==  "nightly" ]]; then
         cargo tarpaulin --all --out Xml
         bash <(curl -s https://codecov.io/bash)
         echo "Uploaded code coverage"

@@ -62,15 +62,18 @@ impl Stream for ChunkedReadFile {
         } else {
             let max_bytes = cmp::min(size.saturating_sub(counter), 65_536) as usize;
             let mut buf = Vec::with_capacity(max_bytes);
+
             file.seek(SeekFrom::Start(offset))?;
             let n = file.by_ref().take(max_bytes as u64).read_to_end(&mut buf)?;
+
             if n == 0 {
-                Poll::Ready(Some(Err(ErrorKind::UnexpectedEof.into())))
-            } else {
-                self.offset += n as u64;
-                self.counter += n as u64;
-                Poll::Ready(Some(Ok(Bytes::from(buf))))
+                return Poll::Ready(Some(Err(ErrorKind::UnexpectedEof.into())));
             }
+
+            self.offset += n as u64;
+            self.counter += n as u64;
+
+            Poll::Ready(Some(Ok(Bytes::from(buf))))
         }
     }
 }
@@ -134,7 +137,7 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for Static {
                         .unwrap_or_else(|| response::empty(http::StatusCode::NOT_FOUND)),
                     Err(e) => {
                         log::debug!("Failed to read file: {}", e);
-                        await!(next.run(cx))
+                        response::empty(http::StatusCode::INTERNAL_SERVER_ERROR)
                     }
                 };
 
