@@ -1,12 +1,13 @@
-//! Errors.
+//! Error and Result module.
 use std::fmt::{self, Display};
 
 use failure::{Backtrace, Context, Fail};
-use http::StatusCode;
-use http_service::{Body, Response};
-use tide::response::IntoResponse;
+
+use crate::response::{self, IntoResponse, Response, StatusCode};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+pub type EndpointResult = Result<Response, Error>;
 
 pub fn user_error<S: Into<String>>(msg: S) -> Error {
     let kind = ErrorKind::UserError(msg.into());
@@ -66,11 +67,7 @@ impl IntoResponse for Error {
         let status = self.status();
         let payload = json!({ "message": format!("{}", self.kind()) });
 
-        http::Response::builder()
-            .status(status)
-            .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::to_vec(&payload).unwrap()))
-            .unwrap()
+        response::json(status, payload)
     }
 }
 

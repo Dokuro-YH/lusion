@@ -2,12 +2,13 @@
 use cookie::{Cookie, CookieJar, Key};
 use futures::future::FutureObj;
 use http::header::{self, HeaderValue};
-use http_service::{Request, Response};
 use tide::error::StringError;
 use tide::middleware::{Middleware, Next};
 use tide::Context;
 use time::Duration;
 
+use crate::request::Request;
+use crate::response::Response;
 use crate::security::{Identity, SecurityContext};
 
 pub struct SecurityMiddleware {
@@ -202,10 +203,9 @@ impl SecurityIdentityPolicy for CookieIdentityPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::response;
+    use crate::response::{self, StatusCode};
     use crate::security::SecurityExt;
     use crate::test_helpers::*;
-    use http::StatusCode;
 
     async fn retrieve(mut ctx: Context<()>) -> Response {
         let res = ctx

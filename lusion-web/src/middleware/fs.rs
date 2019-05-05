@@ -7,10 +7,9 @@ use std::pin::Pin;
 
 use bytes::Bytes;
 use futures::{future::FutureObj, stream::Stream, task::Context, Poll};
-use http_service::Response;
 use tide::middleware::{Middleware, Next};
 
-use crate::response;
+use crate::response::{self, Response};
 
 pub struct NamedFile {
     path: PathBuf,

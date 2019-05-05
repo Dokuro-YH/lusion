@@ -5,6 +5,15 @@ use http_service::{Body, Request, Response};
 use http_service_mock::{make_server, TestBackend};
 use tide::{App, Server};
 
+use lusion_db::PgPool;
+
+pub fn init_pool() -> PgPool {
+    let database_url = dotenv::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPool::init(&database_url).expect("Failed to initialize pool");
+
+    pool
+}
+
 pub fn init_service<AppData: Send + Sync + 'static>(
     app: App<AppData>,
 ) -> TestBackend<Server<AppData>> {
@@ -51,18 +60,16 @@ pub trait ResponseExt {
 
 impl ResponseExt for http::Response<Body> {
     fn get_cookie(&self, name: &str) -> Option<Cookie<'static>> {
-        let cookie_header = self
-            .headers()
+        self.headers()
             .get(http::header::SET_COOKIE)
-            .unwrap()
-            .to_str()
-            .unwrap();
-        let value = cookie_header
-            .split(';')
-            .map(str::trim)
-            .find(|s| s.starts_with(name))
-            .unwrap();
-        Cookie::parse_encoded(value.to_owned()).ok()
+            .and_then(|hv| {
+                let cookie_header = hv.to_str().unwrap();
+                cookie_header
+                    .split(';')
+                    .map(str::trim)
+                    .find(|s| s.starts_with(name))
+            })
+            .and_then(|cookie| Cookie::parse_encoded(cookie.to_owned()).ok())
     }
 
     fn read_body(self) -> String {

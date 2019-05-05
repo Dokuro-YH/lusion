@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
     env_logger::init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::init(&database_url);
+    let pool = PgPool::init(&database_url).expect("Failed to initialize pool");
 
     let mut app = tide::App::new(pool);
     app.middleware(SecurityMiddleware::new(
@@ -27,8 +27,11 @@ fn main() -> io::Result<()> {
     ));
     app.middleware(Static::new("/images", "./images"));
 
-    // app.at("/graphiql").get(get_graphiql);
-    // app.at("/graphql").post(post_graphql);
+    app.at("/api").nest(|api| {
+        use lusion_web::endpoints::*;
+
+        api.at("/users").get(users::get_users);
+    });
 
     Ok(app.serve("127.0.0.1:8000")?)
 }
