@@ -3,6 +3,7 @@ use failure::Fail;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Generic database error.
 #[derive(Debug, Fail)]
 pub enum Error {
     #[fail(display = "diesel error: {}", _0)]

@@ -26,7 +26,7 @@ pub enum ErrorKind {
     UserError(String),
 }
 
-/// Genernal error type.
+/// Generic error type.
 #[derive(Debug)]
 pub struct Error {
     inner: Context<ErrorKind>,

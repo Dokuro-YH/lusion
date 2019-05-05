@@ -1,3 +1,4 @@
+//! PostgreSQL module.
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
 

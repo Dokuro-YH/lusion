@@ -1,4 +1,4 @@
-//! Semantic HTTP response helpers.
+//! HTTP Response.
 pub use http::status::StatusCode;
 pub use http_service::{Body, Response};
 pub use tide::response::IntoResponse;

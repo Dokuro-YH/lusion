@@ -1,3 +1,4 @@
+//! Database test module.
 use diesel::connection::{Connection, TransactionManager};
 
 use crate::{DbPool, Result};

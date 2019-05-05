@@ -1,3 +1,4 @@
+//! Static resource middleware.
 use std::cmp;
 use std::fs::{File, Metadata};
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom};
