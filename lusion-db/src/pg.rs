@@ -8,11 +8,18 @@ pub type PgConn = PgConnection;
 
 pub struct PgPool(Pool<ConnectionManager<PgConn>>);
 
+embed_migrations!("./migrations");
+
 impl PgPool {
-    pub fn new(database_url: &str) -> Self {
+    pub fn init(database_url: &str) -> Result<Self> {
+        log::debug!("initialize database: {}", database_url);
+
+        let conn = PgConn::establish(&database_url)?;
+
+        embedded_migrations::run(&conn).expect("Failed to initialize database");
         let manager = ConnectionManager::<PgConn>::new(database_url);
-        let pool = Pool::new(manager).expect("Failed to create pool");
-        PgPool(pool)
+        let pool = Pool::new(manager)?;
+        Ok(PgPool(pool))
     }
 
     pub fn transaction<F, T>(&self, f: F) -> Result<T>
@@ -32,5 +39,22 @@ impl PgPool {
                 Err(e)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diesel::connection::SimpleConnection;
+
+    #[test]
+    fn test_pg_pool() {
+        let database_url = dotenv::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://postgres@localhost/lusion".to_owned());
+        let pool = PgPool::init(&database_url).unwrap();
+
+        let result = pool.transaction(|conn| Ok(conn.batch_execute("select 1")?));
+
+        assert_matches!(result, Ok(()));
     }
 }

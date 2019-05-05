@@ -8,13 +8,13 @@ use lusion_web::middleware::security::{CookieIdentityPolicy, SecurityMiddleware}
 static AUTH_SIGNING_KEY: &[u8] = &[0; 32];
 
 fn main() -> io::Result<()> {
-    env::set_var("RUST_LOG", "lusion_web=debug");
+    env::set_var("RUST_LOG", "debug,lusion_web=debug");
 
     dotenv::dotenv().ok();
     env_logger::init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::new(&database_url);
+    let pool = PgPool::init(&database_url);
 
     let mut app = tide::App::new(pool);
     app.middleware(SecurityMiddleware::new(
