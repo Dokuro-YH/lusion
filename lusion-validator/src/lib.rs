@@ -9,7 +9,7 @@ mod error;
 mod length;
 
 pub use self::error::{ValidationError, ValidationErrors};
-pub use self::length::{HasLength, Length, LengthValidator};
+pub use self::length::*;
 
 /// Validation a struct.
 ///
@@ -29,8 +29,8 @@ pub use self::length::{HasLength, Length, LengthValidator};
 /// };
 ///
 /// let errors = validate!(user, {
-///     username: [Length(Some(1), Some(20))],
-///     password: [Length(Some(1), Some(20))],
+///     username: [Length(1, 20)],
+///     password: [Length(1, 20)],
 /// });
 ///
 /// assert!(errors.is_empty());
@@ -113,8 +113,8 @@ mod tests {
         };
 
         let errors = validate!(user, {
-            username: [Length(Some(1), Some(20))],
-            password: [Length(Some(1), Some(20))],
+            username: [Length(1, 20)],
+            password: [Length(1, 20)],
         });
 
         assert!(errors.is_empty());

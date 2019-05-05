@@ -3,10 +3,19 @@ use std::collections::{HashMap, HashSet};
 
 use super::{ValidationError, Validator};
 
-/// Create a `LengthValidator`, validate to implement the `HasLength` trait object.
 #[allow(non_snake_case)]
-pub fn Length(min: Option<usize>, max: Option<usize>) -> LengthValidator {
-    LengthValidator(min, max)
+pub fn Length(min: usize, max: usize) -> LengthValidator {
+    LengthValidator(Some(min), Some(max))
+}
+
+#[allow(non_snake_case)]
+pub fn MinLength(min: usize) -> LengthValidator {
+    LengthValidator(Some(min), None)
+}
+
+#[allow(non_snake_case)]
+pub fn MaxLength(max: usize) -> LengthValidator {
+    LengthValidator(None, Some(max))
 }
 
 pub struct LengthValidator(Option<usize>, Option<usize>);
