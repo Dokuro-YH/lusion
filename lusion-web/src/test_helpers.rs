@@ -1,17 +1,18 @@
 //! Test helpers.
+pub use lusion_db::pg::PgPool;
+pub use lusion_db::test::TestPool;
+
 use cookie::Cookie;
 use futures::executor::block_on;
 use http_service::{Body, Request, Response};
 use http_service_mock::{make_server, TestBackend};
 use tide::{App, Server};
 
-use lusion_db::PgPool;
-
-pub fn init_pool() -> PgPool {
+pub fn init_pool() -> TestPool<PgPool> {
     let database_url = dotenv::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::init(&database_url).expect("Failed to initialize pool");
+    let pool = PgPool::new(&database_url).expect("Failed to create pool");
 
-    pool
+    TestPool::with(pool)
 }
 
 pub fn init_service<AppData: Send + Sync + 'static>(

@@ -1,7 +1,7 @@
 //! An experimental, Web API based on async/await IO implementation.
 use std::{env, io};
 
-use lusion_db::PgPool;
+use lusion_db::pg::PgPool;
 use lusion_web::middleware::fs::Static;
 use lusion_web::middleware::security::{CookieIdentityPolicy, SecurityMiddleware};
 
@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
     env_logger::init();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::init(&database_url).expect("Failed to initialize pool");
+    let pool = PgPool::new(&database_url).expect("Failed to create pool");
 
     let mut app = tide::App::new(pool);
     app.middleware(SecurityMiddleware::new(

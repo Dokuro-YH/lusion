@@ -2,8 +2,9 @@
 use diesel::prelude::*;
 use uuid::Uuid;
 
+use crate::error::Result;
+use crate::pg::PgConn;
 use crate::schema::{human_friends, humans};
-use crate::{PgConn, Result};
 
 #[derive(Debug, PartialEq, Queryable, Deserialize, Serialize)]
 pub struct Human {

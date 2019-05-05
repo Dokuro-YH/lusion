@@ -1,10 +1,12 @@
 //! Test helpers.
-use crate::{Error, PgConn};
 use diesel::connection::{Connection, TransactionManager};
 
-pub fn with_transaction<F, T>(f: F) -> Result<T, Error>
+use crate::error::Result;
+use crate::pg::PgConn;
+
+pub fn with_transaction<F, T>(f: F) -> Result<T>
 where
-    F: FnOnce(&PgConn) -> Result<T, Error>,
+    F: FnOnce(&PgConn) -> Result<T>,
 {
     let database_url = dotenv::var("DATABASE_URL").expect("DATABASE_URL must be set");
 

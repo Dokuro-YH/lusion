@@ -4,8 +4,9 @@ use diesel::prelude::*;
 use rand::Rng;
 use uuid::Uuid;
 
+use crate::error::Result;
+use crate::pg::PgConn;
 use crate::schema::users;
-use crate::{PgConn, Result};
 
 #[derive(Debug, PartialEq, Queryable, Insertable, Serialize)]
 #[table_name = "users"]

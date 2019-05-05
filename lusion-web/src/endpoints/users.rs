@@ -1,11 +1,15 @@
 use lusion_db::users::UserRepository;
-use lusion_db::PgPool;
+use lusion_db::DbPool;
 use tide::Context;
 
 use crate::error::{EndpointResult, ResultExt};
 use crate::response::{self, StatusCode};
 
-pub async fn get_users(cx: Context<PgPool>) -> EndpointResult {
+pub async fn get_users<Pool>(cx: Context<Pool>) -> EndpointResult
+where
+    Pool: DbPool,
+    Pool::Connection: UserRepository,
+{
     let pool = cx.app_data();
     let users = pool.transaction(|conn| conn.find_users()).db_error()?;
 
@@ -17,7 +21,7 @@ mod tests {
     use super::*;
     use crate::test_helpers::*;
 
-    fn app() -> tide::App<PgPool> {
+    fn app() -> tide::App<TestPool<PgPool>> {
         let pool = init_pool();
         let mut app = tide::App::new(pool);
 
