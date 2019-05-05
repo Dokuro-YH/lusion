@@ -55,7 +55,7 @@ impl Stream for ChunkedReadFile {
         let size = self.size;
         let offset = self.offset;
         let counter = self.counter;
-        let mut file = &self.file;
+        let file = self.file.by_ref();
 
         if size == counter {
             Poll::Ready(None)
@@ -64,7 +64,7 @@ impl Stream for ChunkedReadFile {
             let mut buf = Vec::with_capacity(max_bytes);
 
             file.seek(SeekFrom::Start(offset))?;
-            let n = file.by_ref().take(max_bytes as u64).read_to_end(&mut buf)?;
+            let n = file.take(max_bytes as u64).read_to_end(&mut buf)?;
 
             if n == 0 {
                 return Poll::Ready(Some(Err(ErrorKind::UnexpectedEof.into())));
