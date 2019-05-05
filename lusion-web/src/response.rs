@@ -1,11 +1,11 @@
 //! Semantic HTTP response helpers.
-use bytes::Bytes;
-use futures::Stream;
-use http::HttpTryFrom;
-
 pub use http::status::StatusCode;
 pub use http_service::{Body, Response};
 pub use tide::response::IntoResponse;
+
+use bytes::Bytes;
+use futures::Stream;
+use http::HttpTryFrom;
 
 /// Set a empty body and generate `Response`
 pub fn empty<S>(status: S) -> Response
