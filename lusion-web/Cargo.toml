@@ -1,6 +1,6 @@
 [package]
 name = "lusion-web"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["Yanhai <shimmly@live.cn>"]
 edition = "2018"
 readme = "../README.md"
