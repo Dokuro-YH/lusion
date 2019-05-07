@@ -7,23 +7,13 @@ readme = "../README.md"
 license = "MIT or Apache-2.0"
 
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+diesel = { version = "1.4", features = ["r2d2", "uuid", "chrono", "serde_json", "postgres"] }
 failure = "0.1"
 log = "0.4"
-rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
-
-[dependencies.uuid]
-features = ["v4", "serde"]
-version = "0.6"
-
-[dependencies.chrono]
-features = ["serde"]
-version = "0.4"
-
-[dependencies.diesel]
-features = ["r2d2", "uuid", "chrono", "serde_json", "postgres"]
-version = "1.4"
+uuid = { version = "0.6", features = ["v4", "serde"] }
 
 [dev-dependencies]
 dotenv = "0.13"

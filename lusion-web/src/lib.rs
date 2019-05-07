@@ -1,4 +1,5 @@
 #![feature(async_await, await_macro)]
+#![allow(unused_mut)]
 
 //! Lusion Web Application.
 

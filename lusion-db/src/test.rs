@@ -5,6 +5,7 @@ use crate::error::DbError;
 use crate::DbPool;
 
 /// A test connection pool.
+#[derive(Clone)]
 pub struct TestPool<Pool>(Pool);
 
 impl<Pool> TestPool<Pool>

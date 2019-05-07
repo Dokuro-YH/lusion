@@ -1,7 +1,6 @@
 //! User repository
 use chrono::prelude::*;
 use diesel::prelude::*;
-use rand::Rng;
 use uuid::Uuid;
 
 use crate::error::DbError;
@@ -25,8 +24,8 @@ pub struct User {
 pub struct CreateUser {
     pub username: String,
     pub password: String,
-    pub nickname: Option<String>,
-    pub avatar_url: Option<String>,
+    pub nickname: String,
+    pub avatar_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,8 +61,8 @@ impl UserRepository for PgConn {
         let id = Uuid::new_v4();
         let username = input.username;
         let password = input.password;
-        let nickname = input.nickname.unwrap_or_else(|| username.clone());
-        let avatar_url = input.avatar_url.unwrap_or_else(random_avatar_url);
+        let nickname = input.nickname;
+        let avatar_url = input.avatar_url;
         let now = Utc::now();
 
         Ok(diesel::insert_into(users::table)
@@ -93,12 +92,6 @@ impl UserRepository for PgConn {
     }
 }
 
-pub fn random_avatar_url() -> String {
-    let mut rng = rand::thread_rng();
-    let avatar_num: i32 = rng.gen_range(1, 21);
-    format!("/api/images/avatars/{}.png", avatar_num)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,14 +117,15 @@ mod tests {
             conn.create_user(CreateUser {
                 username: "admin".to_owned(),
                 password: "1234".to_owned(),
-                nickname: None,
-                avatar_url: None,
+                nickname: "admin",
+                avatar_url: "empty.png",
             })
         });
 
         assert_matches!(result, Ok(user) => {
             assert_eq!(user.username, "admin");
             assert_eq!(user.nickname, "admin");
+            assert_eq!(user.avatar_url, "empty.png");
         });
     }
 

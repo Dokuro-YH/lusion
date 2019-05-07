@@ -31,6 +31,11 @@ fn main() -> io::Result<()> {
         use lusion_web::endpoints::*;
 
         api.at("/users").get(users::get_users);
+        api.at("/users").post(users::post_user);
+        api.at("/users/:user_id").get(users::get_user);
+        api.at("/users/:user_id").delete(users::delete_user);
+        api.at("/users/:user_id/password")
+            .put(users::put_user_password);
     });
 
     Ok(app.serve("127.0.0.1:8000")?)

@@ -9,6 +9,7 @@ use crate::DbPool;
 pub type PgConn = PgConnection;
 
 /// A PostgreSQL connection pool.
+#[derive(Clone)]
 pub struct PgPool(Pool<ConnectionManager<PgConn>>);
 
 impl PgPool {
