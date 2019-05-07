@@ -4,7 +4,7 @@ use diesel::prelude::*;
 use rand::Rng;
 use uuid::Uuid;
 
-use crate::error::Result;
+use crate::error::DbError;
 use crate::pg::PgConn;
 use crate::schema::users;
 
@@ -36,29 +36,29 @@ pub struct UpdateUserPassword {
 }
 
 pub trait UserRepository {
-    fn find_user(&self, user_id: &Uuid) -> Result<Option<User>>;
+    fn find_user(&self, user_id: &Uuid) -> Result<Option<User>, DbError>;
 
-    fn find_users(&self) -> Result<Vec<User>>;
+    fn find_users(&self) -> Result<Vec<User>, DbError>;
 
-    fn create_user(&self, input: CreateUser) -> Result<User>;
+    fn create_user(&self, input: CreateUser) -> Result<User, DbError>;
 
-    fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<usize>;
+    fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<usize, DbError>;
 
-    fn delete_user(&self, user_id: &Uuid) -> Result<usize>;
+    fn delete_user(&self, user_id: &Uuid) -> Result<usize, DbError>;
 }
 
 impl UserRepository for PgConn {
-    fn find_user(&self, user_id: &Uuid) -> Result<Option<User>> {
+    fn find_user(&self, user_id: &Uuid) -> Result<Option<User>, DbError> {
         use crate::schema::users::dsl::*;
 
         Ok(users.find(user_id).get_result::<User>(self).optional()?)
     }
 
-    fn find_users(&self) -> Result<Vec<User>> {
+    fn find_users(&self) -> Result<Vec<User>, DbError> {
         Ok(users::table.load::<User>(self)?)
     }
 
-    fn create_user(&self, input: CreateUser) -> Result<User> {
+    fn create_user(&self, input: CreateUser) -> Result<User, DbError> {
         let id = Uuid::new_v4();
         let username = input.username;
         let password = input.password;
@@ -79,7 +79,7 @@ impl UserRepository for PgConn {
             .get_result(self)?)
     }
 
-    fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<usize> {
+    fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<usize, DbError> {
         Ok(diesel::update(users::table.find(user_id))
             .set((
                 users::password.eq(&new_password),
@@ -88,7 +88,7 @@ impl UserRepository for PgConn {
             .execute(self)?)
     }
 
-    fn delete_user(&self, user_id: &Uuid) -> Result<usize> {
+    fn delete_user(&self, user_id: &Uuid) -> Result<usize, DbError> {
         Ok(diesel::delete(users::table.find(user_id)).execute(self)?)
     }
 }

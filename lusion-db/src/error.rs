@@ -1,35 +1,25 @@
-//! Error and Result module.
-use failure::Fail;
+//! Error module.
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub use diesel::r2d2::PoolError;
+pub use diesel::result::Error as DieselError;
 
-/// Generic database error.
 #[derive(Debug, Fail)]
-pub enum Error {
+pub enum DbError {
     #[fail(display = "diesel error: {}", _0)]
-    DieselError(diesel::result::Error),
-
-    #[fail(display = "connection error: {}", _0)]
-    ConnectionError(diesel::result::ConnectionError),
+    Diesel(DieselError),
 
     #[fail(display = "pool error: {}", _0)]
-    PoolError(diesel::r2d2::PoolError),
+    Pool(PoolError),
 }
 
-impl From<diesel::result::ConnectionError> for Error {
-    fn from(err: diesel::result::ConnectionError) -> Self {
-        Error::ConnectionError(err)
+impl From<DieselError> for DbError {
+    fn from(err: DieselError) -> Self {
+        DbError::Diesel(err)
     }
 }
 
-impl From<diesel::r2d2::PoolError> for Error {
-    fn from(err: diesel::r2d2::PoolError) -> Self {
-        Error::PoolError(err)
-    }
-}
-
-impl From<diesel::result::Error> for Error {
-    fn from(err: diesel::result::Error) -> Self {
-        Error::DieselError(err)
+impl From<PoolError> for DbError {
+    fn from(err: PoolError) -> Self {
+        DbError::Pool(err)
     }
 }

@@ -7,7 +7,6 @@ readme = "../README.md"
 license = "MIT or Apache-2.0"
 
 [dependencies]
-bcrypt = "0.4"
 failure = "0.1"
 log = "0.4"
 rand = "0.6"

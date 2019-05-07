@@ -1,7 +1,8 @@
 //! Database test module.
 use diesel::connection::{Connection, TransactionManager};
 
-use crate::{DbPool, Result};
+use crate::error::DbError;
+use crate::DbPool;
 
 /// A test connection pool.
 pub struct TestPool<Pool>(Pool);
@@ -23,22 +24,22 @@ where
 {
     type Connection = Pool::Connection;
 
-    fn with<F, T>(&self, f: F) -> Result<T>
+    fn with<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        F: FnOnce(&Self::Connection) -> Result<T>,
+        F: FnOnce(&Self::Connection) -> Result<T, DbError>,
     {
         self.0.with(|conn| {
             let transaction_manager = conn.transaction_manager();
             transaction_manager.begin_transaction(conn)?;
-            let value = f(&conn)?;
+            let result = f(&conn);
             transaction_manager.rollback_transaction(conn)?;
-            Ok(value)
+            result
         })
     }
 
-    fn transaction<F, T>(&self, f: F) -> Result<T>
+    fn transaction<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        F: FnOnce(&Self::Connection) -> Result<T>,
+        F: FnOnce(&Self::Connection) -> Result<T, DbError>,
     {
         self.with(f)
     }

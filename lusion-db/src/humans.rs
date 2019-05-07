@@ -2,7 +2,7 @@
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use crate::error::Result;
+use crate::error::DbError;
 use crate::pg::PgConn;
 use crate::schema::{human_friends, humans};
 
@@ -32,30 +32,30 @@ struct HumanFriend<'a> {
 }
 
 pub trait HumanRepository {
-    fn find_humans(&self) -> Result<Vec<Human>>;
+    fn find_humans(&self) -> Result<Vec<Human>, DbError>;
 
-    fn find_human(&self, id: &Uuid) -> Result<Option<Human>>;
+    fn find_human(&self, id: &Uuid) -> Result<Option<Human>, DbError>;
 
-    fn create_human(&self, input: CreateHuman) -> Result<Human>;
+    fn create_human(&self, input: CreateHuman) -> Result<Human, DbError>;
 
-    fn update_human(&self, human_id: &Uuid, input: UpdateHuman) -> Result<Option<Human>>;
+    fn update_human(&self, human_id: &Uuid, input: UpdateHuman) -> Result<Option<Human>, DbError>;
 
-    fn delete_human(&self, human_id: &Uuid) -> Result<usize>;
+    fn delete_human(&self, human_id: &Uuid) -> Result<usize, DbError>;
 
-    fn find_friends_by_human_id(&self, human_id: &Uuid) -> Result<Vec<Human>>;
+    fn find_friends_by_human_id(&self, human_id: &Uuid) -> Result<Vec<Human>, DbError>;
 }
 
 impl HumanRepository for PgConn {
-    fn find_humans(&self) -> Result<Vec<Human>> {
+    fn find_humans(&self) -> Result<Vec<Human>, DbError> {
         use crate::schema::humans::dsl::*;
         Ok(humans.load(self)?)
     }
 
-    fn find_human(&self, id: &Uuid) -> Result<Option<Human>> {
+    fn find_human(&self, id: &Uuid) -> Result<Option<Human>, DbError> {
         Ok(humans::table.find(id).get_result(self).optional()?)
     }
 
-    fn create_human(&self, input: CreateHuman) -> Result<Human> {
+    fn create_human(&self, input: CreateHuman) -> Result<Human, DbError> {
         use crate::schema::humans::dsl::*;
 
         let human_id = Uuid::new_v4();
@@ -78,7 +78,7 @@ impl HumanRepository for PgConn {
         Ok(human)
     }
 
-    fn update_human(&self, human_id: &Uuid, input: UpdateHuman) -> Result<Option<Human>> {
+    fn update_human(&self, human_id: &Uuid, input: UpdateHuman) -> Result<Option<Human>, DbError> {
         use crate::schema::humans::dsl::*;
 
         let human = diesel::update(humans.find(human_id))
@@ -108,7 +108,7 @@ impl HumanRepository for PgConn {
         }
     }
 
-    fn delete_human(&self, human_id: &Uuid) -> Result<usize> {
+    fn delete_human(&self, human_id: &Uuid) -> Result<usize, DbError> {
         use crate::schema::humans::dsl::*;
 
         let _ = diesel::delete(human_friends::table)
@@ -122,7 +122,7 @@ impl HumanRepository for PgConn {
         Ok(updated)
     }
 
-    fn find_friends_by_human_id(&self, human_id: &Uuid) -> Result<Vec<Human>> {
+    fn find_friends_by_human_id(&self, human_id: &Uuid) -> Result<Vec<Human>, DbError> {
         use diesel::dsl::any;
 
         let friend_ids = human_friends::table
