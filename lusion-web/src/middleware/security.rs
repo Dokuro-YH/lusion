@@ -1,6 +1,6 @@
 //! Middleware-based security context.
 use cookie::{Cookie, CookieJar, Key};
-use futures::future::FutureObj;
+use futures::future::BoxFuture;
 use http::header::{self, HeaderValue};
 use tide::error::StringError;
 use tide::middleware::{Middleware, Next};
@@ -36,7 +36,7 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for SecurityMiddleware {
         &'a self,
         mut cx: Context<Data>,
         next: Next<'a, Data>,
-    ) -> FutureObj<'a, Response> {
+    ) -> BoxFuture<'a, Response> {
         let identity = self.policy.from_request(cx.request()).unwrap();
         let sc = SecurityContext::new(identity);
         box_async! {

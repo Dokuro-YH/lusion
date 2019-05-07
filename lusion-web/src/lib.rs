@@ -13,7 +13,7 @@ extern crate assert_matches;
 
 macro_rules! box_async {
     {$($t:tt)*} => {
-        FutureObj::new(Box::new(async move { $($t)* }))
+        ::futures::future::FutureExt::boxed(async move { $($t)* })
     };
 }
 

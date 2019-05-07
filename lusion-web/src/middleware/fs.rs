@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
 use bytes::Bytes;
-use futures::{future::FutureObj, stream::Stream, task::Context, Poll};
+use futures::{future::BoxFuture, stream::Stream, task::Context, Poll};
 use tide::middleware::{Middleware, Next};
 
 use crate::response::{self, Response};
@@ -125,7 +125,7 @@ impl<Data: Send + Sync + 'static> Middleware<Data> for Static {
         &'a self,
         cx: tide::Context<Data>,
         next: Next<'a, Data>,
-    ) -> FutureObj<'a, Response> {
+    ) -> BoxFuture<'a, Response> {
         box_async! {
             let path = cx.uri().path();
             if path.starts_with(&self.path) {

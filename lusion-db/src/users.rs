@@ -117,8 +117,8 @@ mod tests {
             conn.create_user(CreateUser {
                 username: "admin".to_owned(),
                 password: "1234".to_owned(),
-                nickname: "admin",
-                avatar_url: "empty.png",
+                nickname: "admin".to_owned(),
+                avatar_url: "empty.png".to_owned(),
             })
         });
 
