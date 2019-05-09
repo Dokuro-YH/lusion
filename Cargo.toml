@@ -9,6 +9,7 @@ license = "MIT or Apache-2.0"
 [workspace]
 members = [
   ".",
+  "lusion-core",
   "lusion-db",
   "lusion-web",
   "lusion-validator",
