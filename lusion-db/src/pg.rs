@@ -3,7 +3,7 @@ use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
 
 use crate::error::DbError;
-use crate::DbPool;
+use crate::pool::DbPool;
 
 /// A PostgreSQL connection.
 pub type PgConn = PgConnection;

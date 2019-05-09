@@ -2,7 +2,7 @@
 use diesel::connection::{Connection, TransactionManager};
 
 use crate::error::DbError;
-use crate::DbPool;
+use crate::pool::DbPool;
 
 /// A test connection pool.
 #[derive(Clone)]

@@ -1,5 +1,5 @@
 use lusion_db::users::{CreateUser, UserRepository};
-use lusion_db::DbPool;
+use lusion_db::prelude::*;
 use tide::Context;
 
 use crate::error::{EndpointResult, ResultExt};
