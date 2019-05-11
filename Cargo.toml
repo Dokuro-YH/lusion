@@ -16,9 +16,13 @@ members = [
 ]
 
 [dependencies]
+lusion-core = { path = "./lusion-core" }
 lusion-db = { path = "./lusion-db" }
 lusion-web = { path = "./lusion-web" }
 
 env_logger = "0.6"
 dotenv = "0.13"
 tide = "0.2"
+
+[dev-dependencies]
+futures-preview = "0.3.0-alpha.15"
